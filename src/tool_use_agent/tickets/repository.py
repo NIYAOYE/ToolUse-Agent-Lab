@@ -427,6 +427,49 @@ class SQLiteTicketRepository:
             ).fetchone()
         return self._investigation_from_row(row) if row is not None else None
 
+    def mark_investigation_awaiting_review(
+        self,
+        investigation_id: int,
+    ) -> Investigation:
+        now = self._utc_now()
+        with self._lock, self._connection:
+            self.get_investigation(investigation_id)
+            self._connection.execute(
+                """
+                UPDATE investigations
+                SET status = ?, diagnosed_at = ?, stop_reason = NULL
+                WHERE id = ?
+                """,
+                (
+                    InvestigationStatus.AWAITING_REVIEW.value,
+                    now,
+                    investigation_id,
+                ),
+            )
+        return self.get_investigation(investigation_id)
+
+    def mark_investigation_failed(
+        self,
+        investigation_id: int,
+        *,
+        stop_reason: str,
+    ) -> Investigation:
+        with self._lock, self._connection:
+            self.get_investigation(investigation_id)
+            self._connection.execute(
+                """
+                UPDATE investigations
+                SET status = ?, stop_reason = ?
+                WHERE id = ?
+                """,
+                (
+                    InvestigationStatus.FAILED.value,
+                    stop_reason,
+                    investigation_id,
+                ),
+            )
+        return self.get_investigation(investigation_id)
+
     def add_evidence(
         self,
         investigation_id: int,
