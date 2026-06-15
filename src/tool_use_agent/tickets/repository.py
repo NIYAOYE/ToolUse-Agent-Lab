@@ -1,9 +1,20 @@
 from datetime import datetime, timezone
+import json
 from pathlib import Path
 import sqlite3
 from threading import RLock
 
+from tool_use_agent.investigations.models import (
+    Approval,
+    ApprovalDecision,
+    DiagnosisReport,
+    Evidence,
+    EvidenceKind,
+    Investigation,
+    InvestigationStatus,
+)
 from tool_use_agent.tickets.models import (
+    Attachment,
     Ticket,
     TicketPriority,
     TicketSource,
@@ -18,6 +29,22 @@ class TicketAlreadyExists(ValueError):
     def __init__(self, ticket_id: str):
         self.ticket_id = ticket_id
         super().__init__(f"Ticket {ticket_id} already exists.")
+
+
+class ActiveInvestigationExists(ValueError):
+    code = "active_investigation_exists"
+
+    def __init__(self, ticket_id: str):
+        self.ticket_id = ticket_id
+        super().__init__(f"Ticket {ticket_id} already has an active investigation.")
+
+
+class InvalidEvidenceReference(ValueError):
+    code = "invalid_evidence_reference"
+
+
+class InvalidDiagnosisReport(ValueError):
+    code = "invalid_diagnosis_report"
 
 
 class SQLiteTicketRepository:
@@ -109,6 +136,405 @@ class SQLiteTicketRepository:
             raise KeyError("ticket_not_found")
         return self._ticket_from_row(row)
 
+    def add_attachment(
+        self,
+        ticket_id: str,
+        *,
+        original_filename: str,
+        stored_path: str,
+        media_type: str,
+        size_bytes: int,
+    ) -> Attachment:
+        now = self._utc_now()
+        with self._lock, self._connection:
+            self._require_ticket(ticket_id)
+            cursor = self._connection.execute(
+                """
+                INSERT INTO attachments (
+                    ticket_id,
+                    original_filename,
+                    stored_path,
+                    media_type,
+                    size_bytes,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    ticket_id,
+                    original_filename,
+                    stored_path,
+                    media_type,
+                    size_bytes,
+                    now,
+                ),
+            )
+            attachment_id = int(cursor.lastrowid)
+        return Attachment(
+            id=attachment_id,
+            ticket_id=ticket_id,
+            original_filename=original_filename,
+            stored_path=stored_path,
+            media_type=media_type,
+            size_bytes=size_bytes,
+            created_at=self._parse_datetime(now),
+        )
+
+    def list_attachments(self, ticket_id: str) -> list[Attachment]:
+        with self._lock:
+            self._require_ticket(ticket_id)
+            rows = self._connection.execute(
+                """
+                SELECT
+                    id,
+                    ticket_id,
+                    original_filename,
+                    stored_path,
+                    media_type,
+                    size_bytes,
+                    created_at
+                FROM attachments
+                WHERE ticket_id = ?
+                ORDER BY id ASC
+                """,
+                (ticket_id,),
+            ).fetchall()
+        return [self._attachment_from_row(row) for row in rows]
+
+    def create_investigation(
+        self,
+        ticket_id: str,
+        session_id: str,
+    ) -> Investigation:
+        now = self._utc_now()
+        with self._lock, self._connection:
+            self._require_ticket(ticket_id)
+            self._require_session(session_id)
+            active = self._connection.execute(
+                """
+                SELECT 1
+                FROM investigations
+                WHERE ticket_id = ? AND completed_at IS NULL
+                """,
+                (ticket_id,),
+            ).fetchone()
+            if active is not None:
+                raise ActiveInvestigationExists(ticket_id)
+            try:
+                cursor = self._connection.execute(
+                    """
+                    INSERT INTO investigations (
+                        ticket_id,
+                        session_id,
+                        status,
+                        started_at
+                    )
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (
+                        ticket_id,
+                        session_id,
+                        InvestigationStatus.INVESTIGATING.value,
+                        now,
+                    ),
+                )
+            except sqlite3.IntegrityError as exc:
+                raise ActiveInvestigationExists(ticket_id) from exc
+            investigation_id = int(cursor.lastrowid)
+        return self.get_investigation(investigation_id)
+
+    def get_investigation(self, investigation_id: int) -> Investigation:
+        with self._lock:
+            row = self._connection.execute(
+                """
+                SELECT
+                    id,
+                    ticket_id,
+                    session_id,
+                    status,
+                    started_at,
+                    diagnosed_at,
+                    completed_at,
+                    stop_reason,
+                    supplemental_instructions
+                FROM investigations
+                WHERE id = ?
+                """,
+                (investigation_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError("investigation_not_found")
+        return self._investigation_from_row(row)
+
+    def add_evidence(
+        self,
+        investigation_id: int,
+        *,
+        kind: EvidenceKind,
+        title: str,
+        summary: str,
+        source_ref: str | None = None,
+        tool_audit_id: int | None = None,
+        attachment_id: int | None = None,
+    ) -> Evidence:
+        now = self._utc_now()
+        with self._lock, self._connection:
+            investigation = self.get_investigation(investigation_id)
+            self._validate_evidence_reference(
+                investigation,
+                kind=kind,
+                source_ref=source_ref,
+                tool_audit_id=tool_audit_id,
+                attachment_id=attachment_id,
+            )
+            cursor = self._connection.execute(
+                """
+                INSERT INTO evidence (
+                    investigation_id,
+                    kind,
+                    title,
+                    summary,
+                    source_ref,
+                    tool_audit_id,
+                    attachment_id,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    investigation_id,
+                    kind.value,
+                    title,
+                    summary,
+                    source_ref,
+                    tool_audit_id,
+                    attachment_id,
+                    now,
+                ),
+            )
+            evidence_id = int(cursor.lastrowid)
+        return Evidence(
+            id=evidence_id,
+            investigation_id=investigation_id,
+            kind=kind,
+            title=title,
+            summary=summary,
+            source_ref=source_ref,
+            tool_audit_id=tool_audit_id,
+            attachment_id=attachment_id,
+            created_at=self._parse_datetime(now),
+        )
+
+    def list_evidence(self, investigation_id: int) -> list[Evidence]:
+        with self._lock:
+            self.get_investigation(investigation_id)
+            rows = self._connection.execute(
+                """
+                SELECT
+                    id,
+                    investigation_id,
+                    kind,
+                    title,
+                    summary,
+                    source_ref,
+                    tool_audit_id,
+                    attachment_id,
+                    created_at
+                FROM evidence
+                WHERE investigation_id = ?
+                ORDER BY id ASC
+                """,
+                (investigation_id,),
+            ).fetchall()
+        return [self._evidence_from_row(row) for row in rows]
+
+    def save_diagnosis_report(
+        self,
+        investigation_id: int,
+        *,
+        category: str,
+        suggested_priority: TicketPriority,
+        root_cause: str,
+        confidence: float,
+        evidence_ids: list[int],
+        recommended_actions: list[str],
+        reply_draft: str,
+    ) -> DiagnosisReport:
+        evidence_ids_tuple = tuple(evidence_ids)
+        if not 0 <= confidence <= 1:
+            raise InvalidDiagnosisReport("confidence must be between 0 and 1")
+        if len(set(evidence_ids_tuple)) != len(evidence_ids_tuple):
+            raise InvalidDiagnosisReport("evidence ids must be unique")
+
+        now = self._utc_now()
+        with self._lock, self._connection:
+            self.get_investigation(investigation_id)
+            if evidence_ids_tuple:
+                placeholders = ",".join("?" for _ in evidence_ids_tuple)
+                rows = self._connection.execute(
+                    f"""
+                    SELECT id
+                    FROM evidence
+                    WHERE investigation_id = ?
+                        AND id IN ({placeholders})
+                    """,
+                    (investigation_id, *evidence_ids_tuple),
+                ).fetchall()
+                if {row["id"] for row in rows} != set(evidence_ids_tuple):
+                    raise InvalidDiagnosisReport(
+                        "all evidence must belong to the investigation"
+                    )
+            cursor = self._connection.execute(
+                """
+                INSERT INTO diagnosis_reports (
+                    investigation_id,
+                    category,
+                    suggested_priority,
+                    root_cause,
+                    confidence,
+                    recommended_actions_json,
+                    reply_draft,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    investigation_id,
+                    category,
+                    suggested_priority.value,
+                    root_cause,
+                    confidence,
+                    json.dumps(recommended_actions, ensure_ascii=False),
+                    reply_draft,
+                    now,
+                ),
+            )
+            report_id = int(cursor.lastrowid)
+            self._connection.executemany(
+                """
+                INSERT INTO diagnosis_report_evidence (
+                    report_id,
+                    evidence_id,
+                    position
+                )
+                VALUES (?, ?, ?)
+                """,
+                [
+                    (report_id, evidence_id, position)
+                    for position, evidence_id in enumerate(evidence_ids_tuple)
+                ],
+            )
+        report = self.get_diagnosis_report(investigation_id)
+        if report is None:
+            raise RuntimeError("diagnosis_report_not_saved")
+        return report
+
+    def get_diagnosis_report(
+        self,
+        investigation_id: int,
+    ) -> DiagnosisReport | None:
+        with self._lock:
+            self.get_investigation(investigation_id)
+            row = self._connection.execute(
+                """
+                SELECT
+                    id,
+                    investigation_id,
+                    category,
+                    suggested_priority,
+                    root_cause,
+                    confidence,
+                    recommended_actions_json,
+                    reply_draft,
+                    created_at
+                FROM diagnosis_reports
+                WHERE investigation_id = ?
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (investigation_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            evidence_rows = self._connection.execute(
+                """
+                SELECT evidence_id
+                FROM diagnosis_report_evidence
+                WHERE report_id = ?
+                ORDER BY position ASC
+                """,
+                (row["id"],),
+            ).fetchall()
+        return self._diagnosis_report_from_row(
+            row,
+            tuple(item["evidence_id"] for item in evidence_rows),
+        )
+
+    def add_approval(
+        self,
+        investigation_id: int,
+        *,
+        decision: ApprovalDecision,
+        original_draft: str,
+        final_draft: str,
+        review_notes: str,
+    ) -> Approval:
+        now = self._utc_now()
+        with self._lock, self._connection:
+            self.get_investigation(investigation_id)
+            cursor = self._connection.execute(
+                """
+                INSERT INTO approvals (
+                    investigation_id,
+                    decision,
+                    original_draft,
+                    final_draft,
+                    review_notes,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    investigation_id,
+                    decision.value,
+                    original_draft,
+                    final_draft,
+                    review_notes,
+                    now,
+                ),
+            )
+            approval_id = int(cursor.lastrowid)
+        return Approval(
+            id=approval_id,
+            investigation_id=investigation_id,
+            decision=decision,
+            original_draft=original_draft,
+            final_draft=final_draft,
+            review_notes=review_notes,
+            created_at=self._parse_datetime(now),
+        )
+
+    def list_approvals(self, investigation_id: int) -> list[Approval]:
+        with self._lock:
+            self.get_investigation(investigation_id)
+            rows = self._connection.execute(
+                """
+                SELECT
+                    id,
+                    investigation_id,
+                    decision,
+                    original_draft,
+                    final_draft,
+                    review_notes,
+                    created_at
+                FROM approvals
+                WHERE investigation_id = ?
+                ORDER BY id ASC
+                """,
+                (investigation_id,),
+            ).fetchall()
+        return [self._approval_from_row(row) for row in rows]
+
     def transition_status(
         self,
         ticket_id: str,
@@ -151,8 +577,158 @@ class SQLiteTicketRepository:
 
                 CREATE INDEX IF NOT EXISTS idx_tickets_status_priority
                     ON tickets(status, priority, created_at);
+
+                CREATE TABLE IF NOT EXISTS attachments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ticket_id TEXT NOT NULL,
+                    original_filename TEXT NOT NULL,
+                    stored_path TEXT NOT NULL,
+                    media_type TEXT NOT NULL,
+                    size_bytes INTEGER NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (ticket_id) REFERENCES tickets(id)
+                        ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_attachments_ticket_id
+                    ON attachments(ticket_id, id);
+
+                CREATE TABLE IF NOT EXISTS investigations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ticket_id TEXT NOT NULL,
+                    session_id TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    started_at TEXT NOT NULL,
+                    diagnosed_at TEXT,
+                    completed_at TEXT,
+                    stop_reason TEXT,
+                    supplemental_instructions TEXT,
+                    FOREIGN KEY (ticket_id) REFERENCES tickets(id)
+                        ON DELETE CASCADE,
+                    FOREIGN KEY (session_id) REFERENCES sessions(id)
+                );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS
+                    idx_investigations_one_active_per_ticket
+                    ON investigations(ticket_id)
+                    WHERE completed_at IS NULL;
+
+                CREATE TABLE IF NOT EXISTS evidence (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    investigation_id INTEGER NOT NULL,
+                    kind TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    summary TEXT NOT NULL,
+                    source_ref TEXT,
+                    tool_audit_id INTEGER,
+                    attachment_id INTEGER,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (investigation_id) REFERENCES investigations(id)
+                        ON DELETE CASCADE,
+                    FOREIGN KEY (tool_audit_id) REFERENCES tool_audits(id),
+                    FOREIGN KEY (attachment_id) REFERENCES attachments(id)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_evidence_investigation_id
+                    ON evidence(investigation_id, id);
+
+                CREATE TABLE IF NOT EXISTS diagnosis_reports (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    investigation_id INTEGER NOT NULL,
+                    category TEXT NOT NULL,
+                    suggested_priority TEXT NOT NULL,
+                    root_cause TEXT NOT NULL,
+                    confidence REAL NOT NULL,
+                    recommended_actions_json TEXT NOT NULL,
+                    reply_draft TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (investigation_id) REFERENCES investigations(id)
+                        ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS diagnosis_report_evidence (
+                    report_id INTEGER NOT NULL,
+                    evidence_id INTEGER NOT NULL,
+                    position INTEGER NOT NULL,
+                    PRIMARY KEY (report_id, evidence_id),
+                    UNIQUE (report_id, position),
+                    FOREIGN KEY (report_id) REFERENCES diagnosis_reports(id)
+                        ON DELETE CASCADE,
+                    FOREIGN KEY (evidence_id) REFERENCES evidence(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS approvals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    investigation_id INTEGER NOT NULL,
+                    decision TEXT NOT NULL,
+                    original_draft TEXT NOT NULL,
+                    final_draft TEXT NOT NULL,
+                    review_notes TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (investigation_id) REFERENCES investigations(id)
+                        ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_approvals_investigation_id
+                    ON approvals(investigation_id, id);
                 """
             )
+
+    def _validate_evidence_reference(
+        self,
+        investigation: Investigation,
+        *,
+        kind: EvidenceKind,
+        source_ref: str | None,
+        tool_audit_id: int | None,
+        attachment_id: int | None,
+    ) -> None:
+        if kind is EvidenceKind.TOOL_RESULT:
+            if tool_audit_id is None:
+                raise InvalidEvidenceReference("tool audit is required")
+            row = self._connection.execute(
+                "SELECT session_id FROM tool_audits WHERE id = ?",
+                (tool_audit_id,),
+            ).fetchone()
+            if row is None or row["session_id"] != investigation.session_id:
+                raise InvalidEvidenceReference(
+                    "tool audit must belong to the investigation session"
+                )
+        elif kind is EvidenceKind.WEB_SOURCE:
+            if source_ref is None or not source_ref.startswith(("http://", "https://")):
+                raise InvalidEvidenceReference("web source URL is required")
+        elif kind is EvidenceKind.ATTACHMENT:
+            if attachment_id is None or not source_ref:
+                raise InvalidEvidenceReference(
+                    "attachment and fragment reference are required"
+                )
+            row = self._connection.execute(
+                "SELECT ticket_id FROM attachments WHERE id = ?",
+                (attachment_id,),
+            ).fetchone()
+            if row is None or row["ticket_id"] != investigation.ticket_id:
+                raise InvalidEvidenceReference(
+                    "attachment must belong to the investigation ticket"
+                )
+
+    def _require_ticket(self, ticket_id: str) -> None:
+        row = self._connection.execute(
+            "SELECT 1 FROM tickets WHERE id = ?",
+            (ticket_id,),
+        ).fetchone()
+        if row is None:
+            raise KeyError("ticket_not_found")
+
+    def _require_session(self, session_id: str) -> None:
+        try:
+            row = self._connection.execute(
+                "SELECT 1 FROM sessions WHERE id = ?",
+                (session_id,),
+            ).fetchone()
+        except sqlite3.OperationalError as exc:
+            raise KeyError("session_not_found") from exc
+        if row is None:
+            raise KeyError("session_not_found")
 
     @staticmethod
     def _ticket_from_row(row: sqlite3.Row) -> Ticket:
@@ -168,6 +744,83 @@ class SQLiteTicketRepository:
             source=TicketSource(row["source"]),
             created_at=SQLiteTicketRepository._parse_datetime(row["created_at"]),
             updated_at=SQLiteTicketRepository._parse_datetime(row["updated_at"]),
+        )
+
+    @staticmethod
+    def _attachment_from_row(row: sqlite3.Row) -> Attachment:
+        return Attachment(
+            id=row["id"],
+            ticket_id=row["ticket_id"],
+            original_filename=row["original_filename"],
+            stored_path=row["stored_path"],
+            media_type=row["media_type"],
+            size_bytes=row["size_bytes"],
+            created_at=SQLiteTicketRepository._parse_datetime(row["created_at"]),
+        )
+
+    @staticmethod
+    def _investigation_from_row(row: sqlite3.Row) -> Investigation:
+        parse = SQLiteTicketRepository._parse_datetime
+        return Investigation(
+            id=row["id"],
+            ticket_id=row["ticket_id"],
+            session_id=row["session_id"],
+            status=InvestigationStatus(row["status"]),
+            started_at=parse(row["started_at"]),
+            diagnosed_at=parse(row["diagnosed_at"])
+            if row["diagnosed_at"]
+            else None,
+            completed_at=parse(row["completed_at"])
+            if row["completed_at"]
+            else None,
+            stop_reason=row["stop_reason"],
+            supplemental_instructions=row["supplemental_instructions"],
+        )
+
+    @staticmethod
+    def _evidence_from_row(row: sqlite3.Row) -> Evidence:
+        return Evidence(
+            id=row["id"],
+            investigation_id=row["investigation_id"],
+            kind=EvidenceKind(row["kind"]),
+            title=row["title"],
+            summary=row["summary"],
+            source_ref=row["source_ref"],
+            tool_audit_id=row["tool_audit_id"],
+            attachment_id=row["attachment_id"],
+            created_at=SQLiteTicketRepository._parse_datetime(row["created_at"]),
+        )
+
+    @staticmethod
+    def _diagnosis_report_from_row(
+        row: sqlite3.Row,
+        evidence_ids: tuple[int, ...],
+    ) -> DiagnosisReport:
+        return DiagnosisReport(
+            id=row["id"],
+            investigation_id=row["investigation_id"],
+            category=row["category"],
+            suggested_priority=TicketPriority(row["suggested_priority"]),
+            root_cause=row["root_cause"],
+            confidence=row["confidence"],
+            evidence_ids=evidence_ids,
+            recommended_actions=tuple(
+                json.loads(row["recommended_actions_json"])
+            ),
+            reply_draft=row["reply_draft"],
+            created_at=SQLiteTicketRepository._parse_datetime(row["created_at"]),
+        )
+
+    @staticmethod
+    def _approval_from_row(row: sqlite3.Row) -> Approval:
+        return Approval(
+            id=row["id"],
+            investigation_id=row["investigation_id"],
+            decision=ApprovalDecision(row["decision"]),
+            original_draft=row["original_draft"],
+            final_draft=row["final_draft"],
+            review_notes=row["review_notes"],
+            created_at=SQLiteTicketRepository._parse_datetime(row["created_at"]),
         )
 
     @staticmethod

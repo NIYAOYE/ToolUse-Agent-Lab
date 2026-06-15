@@ -1,10 +1,14 @@
 from tool_use_agent.tickets.models import (
+    Attachment,
     Ticket,
     TicketPriority,
     TicketSource,
     TicketStatus,
 )
 from tool_use_agent.tickets.repository import (
+    ActiveInvestigationExists,
+    InvalidDiagnosisReport,
+    InvalidEvidenceReference,
     SQLiteTicketRepository,
     TicketAlreadyExists,
 )
@@ -14,6 +18,10 @@ from tool_use_agent.tickets.state_machine import (
 )
 
 __all__ = [
+    "ActiveInvestigationExists",
+    "Attachment",
+    "InvalidDiagnosisReport",
+    "InvalidEvidenceReference",
     "InvalidTicketTransition",
     "SQLiteTicketRepository",
     "Ticket",

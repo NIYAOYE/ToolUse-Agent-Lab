@@ -38,3 +38,14 @@ class Ticket:
     source: TicketSource
     created_at: datetime
     updated_at: datetime
+
+
+@dataclass(frozen=True)
+class Attachment:
+    id: int
+    ticket_id: str
+    original_filename: str
+    stored_path: str
+    media_type: str
+    size_bytes: int
+    created_at: datetime
