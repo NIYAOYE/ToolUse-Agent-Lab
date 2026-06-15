@@ -91,6 +91,49 @@
   border-right: 0;
 }
 
+.queueFrame tbody td {
+  padding: var(--space-4);
+  border-top: var(--border-subtle);
+  font-size: 0.78rem;
+}
+
+.queueFrame tbody tr:not(:has(.emptyState)):hover {
+  background: rgb(217 95 26 / 7%);
+}
+
+.priority,
+.updated {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.priority {
+  color: var(--color-warning-dark);
+}
+
+.ticketLink {
+  display: grid;
+  gap: 3px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.ticketLink span {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+}
+
+.ticketLink strong {
+  font-weight: 720;
+}
+
+.ticketLink:hover strong {
+  text-decoration: underline;
+  text-decoration-color: var(--color-warning);
+  text-underline-offset: 3px;
+}
+
 .emptyState {
   height: 230px;
   padding: var(--space-8);

@@ -1,10 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import "../test/setup";
 import { ApiError, apiRequest } from "./api";
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
 
 describe("apiRequest", () => {
   it("returns typed JSON responses", async () => {

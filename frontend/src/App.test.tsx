@@ -1,16 +1,25 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { fireEvent, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import "./test/setup";
 import { App } from "./App";
+import { renderApp } from "./test/renderApp";
+
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ items: [], total: 0, page: 1, page_size: 25 }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    ),
+  );
+});
 
 describe("SupportOps application shell", () => {
   it("renders the ticket queue and navigates to the create route", () => {
-    render(
-      <MemoryRouter initialEntries={["/tickets"]}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderApp(<App />);
 
     expect(
       screen.getByRole("heading", { name: "Ticket Queue" }),
@@ -25,11 +34,7 @@ describe("SupportOps application shell", () => {
   });
 
   it("marks the current route in the navigation", () => {
-    render(
-      <MemoryRouter initialEntries={["/metrics"]}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderApp(<App />, "/metrics");
 
     expect(screen.getByRole("link", { name: "Metrics" })).toHaveAttribute(
       "aria-current",

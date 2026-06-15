@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./components/AppShell";
+import { InvestigationWorkbenchPage } from "./pages/InvestigationWorkbenchPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { TicketQueuePage } from "./pages/TicketQueuePage";
 
@@ -30,12 +31,7 @@ export function App() {
         />
         <Route
           path="tickets/:ticketId"
-          element={
-            <PlaceholderPage
-              title="Ticket Detail"
-              description="The shareable investigation view is reserved for Phase 6."
-            />
-          }
+          element={<InvestigationWorkbenchPage />}
         />
         <Route
           path="metrics"
