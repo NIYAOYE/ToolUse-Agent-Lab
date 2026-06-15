@@ -256,8 +256,7 @@ class SQLiteRepository:
                     result_json TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     FOREIGN KEY (session_id) REFERENCES sessions(id)
-                        ON DELETE CASCADE,
-                    UNIQUE (session_id, call_id)
+                        ON DELETE CASCADE
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_tool_audits_session_id

@@ -50,6 +50,33 @@ def test_tool_audits_keep_call_order_and_restore_json(tmp_path):
         repo.close()
 
 
+def test_tool_call_ids_can_repeat_across_conversation_turns(tmp_path):
+    repo = SQLiteRepository(tmp_path / "agent.db")
+    try:
+        session = repo.create_session()
+        repo.add_tool_audit(
+            session.id,
+            "call-1",
+            "web_search",
+            {"query": "first"},
+            {"success": True},
+        )
+        repo.add_tool_audit(
+            session.id,
+            "call-1",
+            "web_search",
+            {"query": "second"},
+            {"success": True},
+        )
+
+        assert [row.arguments["query"] for row in repo.list_tool_audits(session.id)] == [
+            "first",
+            "second",
+        ]
+    finally:
+        repo.close()
+
+
 def test_summary_is_replaced_without_deleting_raw_messages(tmp_path):
     repo = SQLiteRepository(tmp_path / "agent.db")
     try:
