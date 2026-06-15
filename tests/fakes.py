@@ -65,3 +65,43 @@ class StubTool:
             success=False,
             error=ToolError(code="stub_failure", message="Stub tool failed."),
         )
+
+
+class FakeAgentRunner:
+    def __init__(self, *, answer: str, events: list[dict[str, Any]]):
+        self.answer = answer
+        self.events = events
+        self.invocations: list[dict[str, Any]] = []
+
+    def invoke(self, state: dict[str, Any]) -> dict[str, Any]:
+        self.invocations.append(state)
+        return {
+            **state,
+            "messages": [*state["messages"], AIMessage(content=self.answer)],
+            "events": list(self.events),
+            "tool_steps": sum(
+                event["event"] == "tool_result" for event in self.events
+            ),
+        }
+
+
+class FakeSummarizer:
+    def __init__(self, error: Exception | None = None):
+        self.error = error
+        self.invocations: list[tuple[list[Any], dict[str, Any] | None]] = []
+
+    def summarize(
+        self,
+        messages: list[Any],
+        previous_summary: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        self.invocations.append((messages, previous_summary))
+        if self.error:
+            raise self.error
+        return {
+            "goals": ["continue project"],
+            "facts": [],
+            "completed_actions": [],
+            "failed_attempts": [],
+            "open_tasks": [],
+        }
