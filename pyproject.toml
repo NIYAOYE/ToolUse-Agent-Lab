@@ -28,3 +28,6 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["live: consumes real provider APIs"]
+filterwarnings = [
+  "ignore:Using `httpx` with `starlette.testclient` is deprecated.*:Warning",
+]
