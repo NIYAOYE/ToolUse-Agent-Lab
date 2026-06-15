@@ -7,6 +7,11 @@ from tool_use_agent.investigations.models import (
     Investigation,
     InvestigationStatus,
 )
+from tool_use_agent.investigations.runner import (
+    InvestigationRunError,
+    InvestigationRunResult,
+    InvestigationRunner,
+)
 
 __all__ = [
     "Approval",
@@ -15,5 +20,8 @@ __all__ = [
     "Evidence",
     "EvidenceKind",
     "Investigation",
+    "InvestigationRunError",
+    "InvestigationRunResult",
+    "InvestigationRunner",
     "InvestigationStatus",
 ]

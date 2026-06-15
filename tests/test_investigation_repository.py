@@ -4,6 +4,7 @@ from tool_use_agent.memory.repository import SQLiteRepository
 from tool_use_agent.investigations.models import (
     ApprovalDecision,
     EvidenceKind,
+    InvestigationStatus,
 )
 from tool_use_agent.tickets.models import TicketPriority
 from tool_use_agent.tickets.repository import (
@@ -87,6 +88,47 @@ def test_ticket_can_have_only_one_active_investigation(tmp_path):
 
         assert exc_info.value.code == "active_investigation_exists"
         assert exc_info.value.ticket_id == ticket.id
+    finally:
+        repo.close()
+        memory.close()
+
+
+def test_investigation_can_be_marked_awaiting_review(tmp_path):
+    path = tmp_path / "agent.db"
+    memory = SQLiteRepository(path)
+    memory.create_session("session-1")
+    repo = SQLiteTicketRepository(path)
+    ticket = create_ticket(repo)
+    investigation = repo.create_investigation(ticket.id, "session-1")
+    try:
+        updated = repo.mark_investigation_awaiting_review(investigation.id)
+
+        assert updated.status is InvestigationStatus.AWAITING_REVIEW
+        assert updated.diagnosed_at is not None
+        assert updated.completed_at is None
+        assert updated.stop_reason is None
+    finally:
+        repo.close()
+        memory.close()
+
+
+def test_investigation_failure_preserves_stop_reason(tmp_path):
+    path = tmp_path / "agent.db"
+    memory = SQLiteRepository(path)
+    memory.create_session("session-1")
+    repo = SQLiteTicketRepository(path)
+    ticket = create_ticket(repo)
+    investigation = repo.create_investigation(ticket.id, "session-1")
+    try:
+        updated = repo.mark_investigation_failed(
+            investigation.id,
+            stop_reason="invalid_diagnosis_report",
+        )
+
+        assert updated.status is InvestigationStatus.FAILED
+        assert updated.diagnosed_at is None
+        assert updated.completed_at is None
+        assert updated.stop_reason == "invalid_diagnosis_report"
     finally:
         repo.close()
         memory.close()
