@@ -141,6 +141,9 @@ class ChatService:
     def list_messages(self, session_id: str):
         return self._repository.list_messages(session_id)
 
+    def close(self) -> None:
+        self._repository.close()
+
     def _build_context(self, session_id: str) -> list[Any]:
         summary = self._repository.get_summary(session_id)
         stored_messages = self._repository.list_messages(session_id)
