@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Check,
+  ClipboardList,
   ExternalLink,
   Play,
   RotateCcw,
@@ -135,6 +136,11 @@ export function InvestigationWorkbenchPage() {
         <div className={styles.headerStatus}>
           <span>{ticket.priority}</span>
           <StatusBadge status={currentInvestigation?.status ?? ticket.status} />
+          {investigationId && (
+            <Link className={styles.auditLink} to={`/audits/${investigationId}`}>
+              <ClipboardList aria-hidden="true" size={14} /> Audit
+            </Link>
+          )}
         </div>
       </header>
 

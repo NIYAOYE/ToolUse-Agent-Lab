@@ -17,6 +17,7 @@ from tool_use_agent.investigations.runner import (
     InvestigationRunError,
     InvestigationRunner,
 )
+from tool_use_agent.memory.models import ToolAuditRecord
 from tool_use_agent.memory.repository import SQLiteRepository
 from tool_use_agent.tickets.models import TicketStatus
 from tool_use_agent.tickets.repository import (
@@ -175,6 +176,13 @@ class InvestigationService:
             investigation_id,
             after_id=after_id,
         )
+
+    def list_tool_audits(
+        self,
+        investigation_id: int,
+    ) -> list[ToolAuditRecord]:
+        investigation = self._tickets.get_investigation(investigation_id)
+        return self._memory.list_tool_audits(investigation.session_id)
 
     def decide(
         self,

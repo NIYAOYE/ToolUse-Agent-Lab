@@ -61,6 +61,16 @@
   font: 800 1rem var(--font-mono);
 }
 
+.auditLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-warning-dark);
+  font: 0.66rem var(--font-mono);
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
 .workbench {
   min-height: 650px;
   display: grid;
