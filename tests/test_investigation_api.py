@@ -186,3 +186,36 @@ def test_diagnosis_time_metrics_api(tmp_path):
     finally:
         tickets.close()
         memory.close()
+
+
+def test_investigation_tool_audit_detail_api(tmp_path):
+    app, tickets, memory = build_app(tmp_path)
+    client = TestClient(app)
+    try:
+        client.post("/v1/tickets", json=ticket_payload())
+        started = client.post("/v1/tickets/INC-1042/investigations").json()
+        memory.add_tool_audit(
+            started["session_id"],
+            "call-audit-1",
+            "web_search",
+            {"query": "database connection pool exhaustion"},
+            {"success": True, "data": [{"url": "https://example.test"}]},
+        )
+
+        response = client.get(
+            f"/v1/investigations/{started['id']}/audits"
+        )
+        missing = client.get("/v1/investigations/999/audits")
+
+        assert response.status_code == 200
+        assert response.json()[0]["call_id"] == "call-audit-1"
+        assert response.json()[0]["tool_name"] == "web_search"
+        assert response.json()[0]["arguments"] == {
+            "query": "database connection pool exhaustion"
+        }
+        assert response.json()[0]["result"]["success"] is True
+        assert missing.status_code == 404
+        assert missing.json()["code"] == "investigation_not_found"
+    finally:
+        tickets.close()
+        memory.close()

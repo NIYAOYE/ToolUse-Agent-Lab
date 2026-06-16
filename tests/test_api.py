@@ -1,7 +1,10 @@
+import json
+import logging
+
 from fastapi.testclient import TestClient
 
 from tests.fakes import FakeAgentRunner, FakeSummarizer
-from tool_use_agent.api.app import create_app
+from tool_use_agent.api.app import _REQUEST_LOGGER, _request_id, create_app
 from tool_use_agent.memory.repository import SQLiteRepository
 from tool_use_agent.service import ChatService
 
@@ -11,6 +14,67 @@ def test_health_reports_ready(app):
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_requests_emit_json_log_and_response_request_id(app, caplog):
+    assert _REQUEST_LOGGER.name == (
+        "uvicorn.error.tool_use_agent.api.requests"
+    )
+    with caplog.at_level(logging.INFO, logger=_REQUEST_LOGGER.name):
+        response = TestClient(app).get(
+            "/health?api_key=do-not-log",
+            headers={"X-Request-ID": "supportops-request_42"},
+        )
+
+    record = json.loads(caplog.records[-1].message)
+    assert response.headers["x-request-id"] == "supportops-request_42"
+    assert record["request_id"] == "supportops-request_42"
+    assert record["method"] == "GET"
+    assert record["path"] == "/health"
+    assert record["status_code"] == 200
+    assert record["duration_ms"] >= 0
+    assert "query" not in record
+    assert "body" not in record
+    assert "do-not-log" not in caplog.records[-1].message
+
+
+def test_unicode_request_id_is_replaced(app):
+    assert _request_id("请求-42") != "请求-42"
+
+
+def test_default_host_and_cors_boundaries(app):
+    allowed_get = TestClient(app).get(
+        "/health",
+        headers={"Origin": "http://127.0.0.1:5173"},
+    )
+    allowed = TestClient(app).options(
+        "/health",
+        headers={
+            "Origin": "http://127.0.0.1:5173",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    disallowed_origin = TestClient(app).options(
+        "/health",
+        headers={
+            "Origin": "https://evil.example",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    disallowed_host = TestClient(
+        app,
+        base_url="http://evil.example",
+    ).get("/health")
+
+    assert allowed.status_code == 200
+    assert allowed.headers["access-control-allow-origin"] == (
+        "http://127.0.0.1:5173"
+    )
+    assert allowed_get.headers["access-control-expose-headers"] == (
+        "X-Request-ID"
+    )
+    assert "access-control-allow-origin" not in disallowed_origin.headers
+    assert disallowed_host.status_code == 400
 
 
 def test_create_session_chat_and_read_history(app):

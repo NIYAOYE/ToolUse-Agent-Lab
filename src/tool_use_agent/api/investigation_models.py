@@ -65,6 +65,18 @@ class InvestigationEventResponse(BaseModel):
     created_at: datetime
 
 
+class ToolAuditResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    session_id: str
+    call_id: str
+    tool_name: str
+    arguments: dict[str, Any]
+    result: dict[str, Any]
+    created_at: datetime
+
+
 class InvestigationDetailResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

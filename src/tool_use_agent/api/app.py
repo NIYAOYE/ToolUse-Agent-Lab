@@ -1,8 +1,16 @@
 from collections.abc import Iterator
+import json
+import logging
+import re
+from time import perf_counter
 from typing import Any
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.requests import Request
 
 from tool_use_agent.api.models import (
     ChatRequest,
@@ -19,12 +27,62 @@ from tool_use_agent.service import ChatService
 from tool_use_agent.tickets.service import TicketService
 
 
+_REQUEST_LOGGER = logging.getLogger(
+    "uvicorn.error.tool_use_agent.api.requests"
+)
+_REQUEST_ID_PATTERN = re.compile(r"[A-Za-z0-9._-]+\Z")
+
+
 def create_app(
     service: ChatService,
     ticket_service: TicketService | None = None,
     investigation_service: InvestigationService | None = None,
+    *,
+    allowed_hosts: tuple[str, ...] = (
+        "127.0.0.1",
+        "localhost",
+        "testserver",
+    ),
+    allowed_origins: tuple[str, ...] = (
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    ),
 ) -> FastAPI:
     app = FastAPI(title="ToolUse Agent Lab", version="0.1.0")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(allowed_origins),
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Accept", "Content-Type", "X-Request-ID"],
+        expose_headers=["X-Request-ID"],
+    )
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=list(allowed_hosts),
+    )
+
+    @app.middleware("http")
+    async def log_request(request: Request, call_next):
+        request_id = _request_id(request.headers.get("x-request-id"))
+        started = perf_counter()
+        response = await call_next(request)
+        duration_ms = round((perf_counter() - started) * 1000, 3)
+        response.headers["X-Request-ID"] = request_id
+        _REQUEST_LOGGER.info(
+            json.dumps(
+                {
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status_code": response.status_code,
+                    "duration_ms": duration_ms,
+                },
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+        )
+        return response
 
     if ticket_service is not None:
         app.include_router(create_ticket_router(ticket_service))
@@ -123,3 +181,9 @@ def _not_found() -> HTTPException:
         status_code=status.HTTP_404_NOT_FOUND,
         detail="session_not_found",
     )
+
+
+def _request_id(value: str | None) -> str:
+    if value and len(value) <= 128 and _REQUEST_ID_PATTERN.fullmatch(value):
+        return value
+    return str(uuid4())

@@ -2,6 +2,9 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./components/AppShell";
 import { InvestigationWorkbenchPage } from "./pages/InvestigationWorkbenchPage";
+import { AuditPage } from "./pages/AuditPage";
+import { ImportTicketsPage } from "./pages/ImportTicketsPage";
+import { MetricsPage } from "./pages/MetricsPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { TicketQueuePage } from "./pages/TicketQueuePage";
 
@@ -22,12 +25,7 @@ export function App() {
         />
         <Route
           path="tickets/import"
-          element={
-            <PlaceholderPage
-              title="Import Tickets"
-              description="CSV and JSON import UI will connect to the existing intake API."
-            />
-          }
+          element={<ImportTicketsPage />}
         />
         <Route
           path="tickets/:ticketId"
@@ -35,21 +33,11 @@ export function App() {
         />
         <Route
           path="metrics"
-          element={
-            <PlaceholderPage
-              title="Diagnosis Metrics"
-              description="Median and P75 diagnosis-time views arrive in Phase 7."
-            />
-          }
+          element={<MetricsPage />}
         />
         <Route
           path="audits/:investigationId"
-          element={
-            <PlaceholderPage
-              title="Investigation Audit"
-              description="Full tool and evidence audit detail arrives in Phase 7."
-            />
-          }
+          element={<AuditPage />}
         />
         <Route path="*" element={<Navigate replace to="/tickets" />} />
       </Route>

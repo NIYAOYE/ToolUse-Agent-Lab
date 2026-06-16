@@ -94,7 +94,13 @@ def create_application() -> FastAPI:
         ticket_service.close()
         chat_service.close()
         raise
-    return create_app(chat_service, ticket_service, investigation_service)
+    return create_app(
+        chat_service,
+        ticket_service,
+        investigation_service,
+        allowed_hosts=settings.allowed_hosts,
+        allowed_origins=settings.allowed_origins,
+    )
 
 
 def _build_registry_and_model(settings: Settings):

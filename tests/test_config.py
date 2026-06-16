@@ -28,3 +28,22 @@ def test_settings_use_china_openai_compatible_endpoint(monkeypatch):
         settings.qwen_base_url
         == "https://dashscope.aliyuncs.com/compatible-mode/v1"
     )
+
+
+def test_settings_parse_controlled_hosts_and_origins(monkeypatch):
+    monkeypatch.setenv(
+        "SUPPORTOPS_ALLOWED_HOSTS",
+        "support.internal, 127.0.0.1",
+    )
+    monkeypatch.setenv(
+        "SUPPORTOPS_ALLOWED_ORIGINS",
+        "https://support.internal, http://127.0.0.1:5173",
+    )
+
+    settings = Settings.from_env()
+
+    assert settings.allowed_hosts == ("support.internal", "127.0.0.1")
+    assert settings.allowed_origins == (
+        "https://support.internal",
+        "http://127.0.0.1:5173",
+    )

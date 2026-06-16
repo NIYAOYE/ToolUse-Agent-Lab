@@ -29,6 +29,11 @@ export type TicketPage = {
   page_size: number;
 };
 
+export type TicketImportResponse = {
+  imported_count: number;
+  tickets: Ticket[];
+};
+
 export type DiagnosisTimeMetrics = {
   count: number;
   median_seconds: number | null;
@@ -124,4 +129,14 @@ export type InvestigationDecisionResponse = {
   investigation: Investigation;
   approvals: Approval[];
   should_run: boolean;
+};
+
+export type ToolAudit = {
+  id: number;
+  session_id: string;
+  call_id: string;
+  tool_name: string;
+  arguments: Record<string, unknown>;
+  result: Record<string, unknown>;
+  created_at: string;
 };

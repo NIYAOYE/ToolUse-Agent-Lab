@@ -6,8 +6,12 @@ from langchain_core.messages import HumanMessage
 import pytest
 
 from tool_use_agent.composition import build_service
+from tool_use_agent.composition import build_investigation_service
 from tool_use_agent.config import Settings
+from tool_use_agent.investigations.models import ApprovalDecision
 from tool_use_agent.llm.qwen import build_qwen_model
+from tool_use_agent.tickets.models import TicketPriority
+from tool_use_agent.tickets.repository import SQLiteTicketRepository
 from tool_use_agent.tools.web_search import TavilySearchTool
 
 
@@ -65,5 +69,55 @@ def test_live_agent_uses_web_search_and_returns_source_url(tmp_path):
 
         assert any(item.tool_name == "web_search" for item in audits)
         assert re.search(r"https?://\S+", result.answer)
+    finally:
+        service.close()
+
+
+def test_live_supportops_investigation_reaches_human_approval(tmp_path):
+    _require_live_keys()
+    settings = replace(
+        Settings.from_env(),
+        database_path=tmp_path / "live-supportops.db",
+        workspace_root=tmp_path / "workspace",
+        max_tool_steps=5,
+    )
+    tickets = SQLiteTicketRepository(settings.database_path)
+    try:
+        tickets.create_ticket(
+            ticket_id="LIVE-DEMO-1",
+            title="Official LangGraph documentation bookmark is stale",
+            description=(
+                "The support team bookmark points to an outdated LangGraph "
+                "documentation path. Use web search to identify the official "
+                "current documentation URL and prepare a cited response."
+            ),
+            environment="support-demo",
+            service="developer-portal",
+            priority=TicketPriority.P3,
+            category="documentation/external",
+        )
+    finally:
+        tickets.close()
+
+    service = build_investigation_service(settings)
+    try:
+        investigation = service.start("LIVE-DEMO-1")
+        detail = service.run(investigation.id)
+        audits = service.list_tool_audits(investigation.id)
+
+        assert detail.report is not None
+        assert detail.evidence
+        assert set(detail.report.evidence_ids).issubset(
+            {item.id for item in detail.evidence}
+        )
+        assert any(item.tool_name == "web_search" for item in audits)
+
+        approved = service.decide(
+            investigation.id,
+            decision=ApprovalDecision.APPROVED,
+            review_notes="Live demo approval.",
+        )
+        assert approved.investigation.status.value == "APPROVED"
+        assert approved.should_run is False
     finally:
         service.close()

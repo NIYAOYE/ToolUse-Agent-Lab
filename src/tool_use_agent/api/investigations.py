@@ -13,6 +13,7 @@ from tool_use_agent.api.investigation_models import (
     InvestigationDetailResponse,
     InvestigationResponse,
     InvestigationStartRequest,
+    ToolAuditResponse,
 )
 from tool_use_agent.api.sse import encode_sse
 from tool_use_agent.api.ticket_models import ApiErrorResponse
@@ -142,6 +143,18 @@ def create_investigation_router(service: InvestigationService) -> APIRouter:
                 "X-Accel-Buffering": "no",
             },
         )
+
+    @router.get(
+        "/investigations/{investigation_id}/audits",
+        response_model=list[ToolAuditResponse],
+        responses={status.HTTP_404_NOT_FOUND: {"model": ApiErrorResponse}},
+    )
+    def list_investigation_audits(investigation_id: int):
+        try:
+            audits = service.list_tool_audits(investigation_id)
+        except KeyError:
+            return _investigation_not_found(investigation_id)
+        return [ToolAuditResponse.model_validate(item) for item in audits]
 
     @router.post(
         "/investigations/{investigation_id}/decision",

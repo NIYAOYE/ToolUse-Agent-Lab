@@ -20,6 +20,8 @@ class Settings:
     max_output_chars: int
     context_char_threshold: int
     recent_message_count: int
+    allowed_hosts: tuple[str, ...]
+    allowed_origins: tuple[str, ...]
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -62,4 +64,23 @@ class Settings:
             recent_message_count=int(
                 os.getenv("AGENT_RECENT_MESSAGE_COUNT", "12")
             ),
+            allowed_hosts=_csv_setting(
+                "SUPPORTOPS_ALLOWED_HOSTS",
+                ("127.0.0.1", "localhost", "testserver"),
+            ),
+            allowed_origins=_csv_setting(
+                "SUPPORTOPS_ALLOWED_ORIGINS",
+                (
+                    "http://127.0.0.1:5173",
+                    "http://localhost:5173",
+                ),
+            ),
         )
+
+
+def _csv_setting(name: str, default: tuple[str, ...]) -> tuple[str, ...]:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    values = tuple(item.strip() for item in raw.split(",") if item.strip())
+    return values or default

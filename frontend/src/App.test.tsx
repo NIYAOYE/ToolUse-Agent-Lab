@@ -8,10 +8,16 @@ import { renderApp } from "./test/renderApp";
 beforeEach(() => {
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({ items: [], total: 0, page: 1, page_size: 25 }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
+    vi.fn((input: RequestInfo | URL) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify(
+            String(input) === "/v1/metrics/diagnosis-time"
+              ? { count: 0, median_seconds: null, p75_seconds: null }
+              : { items: [], total: 0, page: 1, page_size: 25 },
+          ),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
       ),
     ),
   );

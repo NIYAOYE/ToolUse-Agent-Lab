@@ -22,6 +22,7 @@ dev = ["pytest==9.0.3"]
 
 [project.scripts]
 tool-agent = "tool_use_agent.cli:main"
+supportops-seed = "tool_use_agent.demo:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

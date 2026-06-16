@@ -6,7 +6,9 @@ import type {
   InvestigationDecisionResponse,
   InvestigationDetail,
   TicketDetail,
+  TicketImportResponse,
   TicketPage,
+  ToolAudit,
 } from "./contracts";
 
 function jsonRequest(body: unknown): RequestInit {
@@ -26,6 +28,14 @@ export const supportOpsApi = {
       `/v1/tickets/${encodeURIComponent(ticketId)}`,
     );
   },
+  importTickets(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    return apiRequest<TicketImportResponse>("/v1/tickets/import", {
+      method: "POST",
+      body: form,
+    });
+  },
   startInvestigation(ticketId: string, supplementalInstructions: string) {
     return apiRequest<Investigation>(
       `/v1/tickets/${encodeURIComponent(ticketId)}/investigations`,
@@ -39,6 +49,11 @@ export const supportOpsApi = {
   getInvestigation(investigationId: number) {
     return apiRequest<InvestigationDetail>(
       `/v1/investigations/${investigationId}`,
+    );
+  },
+  listInvestigationAudits(investigationId: number) {
+    return apiRequest<ToolAudit[]>(
+      `/v1/investigations/${investigationId}/audits`,
     );
   },
   decideInvestigation(
