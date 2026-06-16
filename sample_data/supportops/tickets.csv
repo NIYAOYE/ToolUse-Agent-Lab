@@ -1,0 +1,5 @@
+id,title,description,environment,service,priority,category
+INC-2011,Payments callback latency exceeds SLO,Payment callback p95 latency exceeds 2500 ms during provider failover.,production,payments-callback,P1,dependency/latency
+INC-2012,Inventory sync emits duplicate updates,Inventory sync publishes duplicate SKU update events after retry storms.,staging,inventory-sync,P2,messaging/duplicate-events
+INC-2013,Admin dashboard shows stale cache data,Dashboard widgets keep showing old aggregate counts after deployment.,production,admin-dashboard,P3,cache/staleness
+INC-2014,Notification worker drops SMS jobs,Worker logs show SMS jobs marked skipped after template lookup failures.,production,notification-worker,P2,worker/template

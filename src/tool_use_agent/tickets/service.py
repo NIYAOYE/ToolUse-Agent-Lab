@@ -153,6 +153,16 @@ class TicketService:
             diagnosis_report=report,
         )
 
+    def delete_ticket(self, ticket_id: str) -> None:
+        attachments = self._repository.list_attachments(ticket_id)
+        self._repository.delete_ticket(ticket_id)
+        for attachment in attachments:
+            target = (self._workspace_root / attachment.stored_path).resolve()
+            if not target.is_relative_to(self._workspace_root):
+                continue
+            target.unlink(missing_ok=True)
+            self._remove_empty_attachment_dirs(target.parent)
+
     def import_tickets(self, filename: str, content: bytes) -> list[Ticket]:
         if len(content) > self._max_import_bytes:
             raise TicketImportTooLarge("Ticket import exceeds the file size limit.")
@@ -383,6 +393,16 @@ class TicketService:
                 raise AttachmentValidationError(
                     "JSON attachment content is invalid."
                 ) from exc
+
+    def _remove_empty_attachment_dirs(self, directory: Path) -> None:
+        root = self._workspace_root.resolve()
+        current = directory.resolve()
+        while current != root and current.is_relative_to(root):
+            try:
+                current.rmdir()
+            except OSError:
+                break
+            current = current.parent
 
     def close(self) -> None:
         self._repository.close()

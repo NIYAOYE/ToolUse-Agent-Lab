@@ -1,7 +1,7 @@
 from typing import Any, Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, File, Query, UploadFile, status
+from fastapi import APIRouter, File, Query, Response, UploadFile, status
 from fastapi.responses import JSONResponse
 
 from tool_use_agent.api.ticket_models import (
@@ -126,6 +126,23 @@ def create_ticket_router(service: TicketService) -> APIRouter:
                 details={"ticket_id": ticket_id},
             )
         return TicketDetailResponse.model_validate(detail)
+
+    @router.delete(
+        "/{ticket_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
+        responses={status.HTTP_404_NOT_FOUND: {"model": ApiErrorResponse}},
+    )
+    def delete_ticket(ticket_id: str):
+        try:
+            service.delete_ticket(ticket_id)
+        except KeyError:
+            return _error_response(
+                status.HTTP_404_NOT_FOUND,
+                code="ticket_not_found",
+                message=f"Ticket {ticket_id} was not found.",
+                details={"ticket_id": ticket_id},
+            )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @router.post(
         "/{ticket_id}/attachments",

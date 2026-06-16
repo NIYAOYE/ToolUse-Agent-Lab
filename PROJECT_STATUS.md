@@ -208,9 +208,9 @@ Phase 3 结构化调查引擎完成后执行：
 
 ```powershell
 $env:PYTHONPATH=(Resolve-Path .\src)
-& 'D:\miniconda3\envs\agent\python.exe' -m pytest -m "not live" -q `
+conda run -n agent python -m pytest -m "not live" -q `
   --basetemp .pytest_tmp\phase3-final -p no:cacheprovider
-& 'D:\miniconda3\envs\agent\python.exe' -m compileall -q src tests
+conda run -n agent python -m compileall -q src tests
 git diff --check
 ```
 
@@ -220,9 +220,9 @@ Phase 4 调查、审批和指标 API 完成后执行：
 
 ```powershell
 $env:PYTHONPATH=(Resolve-Path .\src)
-& 'D:\miniconda3\envs\agent\python.exe' -m pytest -m "not live" -q `
+conda run -n agent python -m pytest -m "not live" -q `
   --basetemp .pytest_tmp\phase4-final -p no:cacheprovider
-& 'D:\miniconda3\envs\agent\python.exe' -m compileall -q src tests
+conda run -n agent python -m compileall -q src tests
 git diff --check
 ```
 
@@ -237,9 +237,9 @@ npm run build
 
 cd ..
 $env:PYTHONPATH=(Resolve-Path .\src)
-& 'D:\miniconda3\envs\agent\python.exe' -m pytest -m "not live" -q `
+conda run -n agent python -m pytest -m "not live" -q `
   --basetemp .pytest_tmp\phase5-final -p no:cacheprovider
-& 'D:\miniconda3\envs\agent\python.exe' -m compileall -q src tests
+conda run -n agent python -m compileall -q src tests
 git diff --check
 ```
 
@@ -256,9 +256,9 @@ npm run build
 
 cd ..
 $env:PYTHONPATH=(Resolve-Path .\src)
-& 'D:\miniconda3\envs\agent\python.exe' -m pytest -m "not live" -q `
+conda run -n agent python -m pytest -m "not live" -q `
   --basetemp .pytest_tmp\phase6-final -p no:cacheprovider
-& 'D:\miniconda3\envs\agent\python.exe' -m compileall -q src tests
+conda run -n agent python -m compileall -q src tests
 git diff --check
 ```
 
@@ -276,9 +276,9 @@ npm run build
 
 cd ..
 $env:PYTHONPATH=(Resolve-Path .\src)
-& 'D:\miniconda3\envs\agent\python.exe' -m pytest -m "not live" -q `
+conda run -n agent python -m pytest -m "not live" -q `
   --basetemp .pytest_tmp\phase7-full -p no:cacheprovider
-& 'D:\miniconda3\envs\agent\python.exe' -m compileall -q src tests
+conda run -n agent python -m compileall -q src tests
 git diff --check
 ```
 
@@ -289,9 +289,9 @@ Phase 8 演示与运行时硬化完成后执行：
 
 ```powershell
 $env:PYTHONPATH=(Resolve-Path .\src)
-& 'D:\miniconda3\envs\agent\python.exe' -m pytest -m "not live" -q `
+conda run -n agent python -m pytest -m "not live" -q `
   --basetemp .pytest_tmp\phase8-final -p no:cacheprovider
-& 'D:\miniconda3\envs\agent\python.exe' -m compileall -q src tests
+conda run -n agent python -m compileall -q src tests
 
 cd frontend
 npm test -- --run
@@ -389,7 +389,7 @@ git diff --check
 本轮 Agent 完成内容：
 
 * 核对当前分支为 `codex/demo-hardening`，Phase 8 实现提交为 `65c61d0`，除 SQLite WAL 临时文件外无未提交源码。
-* 按用户要求使用 `conda run -n agent` 验证 Python 代码；`agent` 解释器为 `D:\miniconda3\envs\agent\python.exe`。
+* 按用户要求使用 `conda run -n agent` 验证 Python 代码。
 * 非 live 回归重新通过：后端 `148 passed, 1 skipped, 4 deselected`，Python 编译和 `git diff --check` 通过。
 * 前端测试与构建按顺序通过：`9 passed`，Vite 生产构建通过。
 * 普通沙箱 live 测试仍被 `WinError 10013` 拦截；提权网络后完整 live 验收通过：`4 passed in 19.76s`。
@@ -397,6 +397,18 @@ git diff --check
 * 补推 Phase 4-8 远端分支，确认 Phase 4 PR #10、Phase 5 PR #11、Phase 6 PR #12、Phase 7 PR #13 已合并。
 * 创建并更新 Phase 8 PR #14：`https://github.com/NIYAOYE/triageops-agent-Lab/pull/14`。
 * 创建最终集成 PR #15：`https://github.com/NIYAOYE/triageops-agent-Lab/pull/15`，用于将 Phase 7/8 结果合入受保护 `main`。
+
+### Agent Update - 2026-06-16 删除工单与 README 展示刷新
+
+本轮 Agent 完成内容：
+
+* 新增 `DELETE /v1/tickets/{id}`，删除工单时复用 SQLite 外键级联清理调查、证据、报告、审批和事件记录。
+* `TicketService.delete_ticket()` 会在数据库删除后清理该工单上传到工作区的附件文件，并移除空附件目录。
+* React 工单队列新增删除按钮，删除前使用浏览器确认框，成功后刷新队列。
+* README 改为中文主文案的 GitHub 展示版，保留专有技术名词英文；预留截图路径 `assets/triageops-workbench.png`。
+* 新增 `assets/README.md`，说明手动截图命名和放置位置。
+* 复用并纳入 `sample_data/supportops/` 合成工单与附件，便于本地导入和工具函数演示。
+* 验证结果：后端非 live `157 passed, 1 skipped, 4 deselected`，Python 编译通过；前端 `11 passed`，Vite 生产构建通过。
 
 ### Agent Update - 2026-06-15 Phase 8 本地实现完成
 

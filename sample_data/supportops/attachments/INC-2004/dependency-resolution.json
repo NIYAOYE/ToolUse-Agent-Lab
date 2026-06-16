@@ -1,0 +1,21 @@
+{
+  "job_id": "build-881",
+  "failed_package": {
+    "name": "@internal/payment-client",
+    "version": "4.8.2"
+  },
+  "registries": [
+    {
+      "name": "mirror",
+      "url": "https://packages.internal/mirror",
+      "has_version": false,
+      "last_sync": "2026-06-15T22:00:00Z"
+    },
+    {
+      "name": "upstream",
+      "url": "https://packages.internal/upstream",
+      "has_version": true,
+      "last_sync": "2026-06-16T07:10:00Z"
+    }
+  ]
+}

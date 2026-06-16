@@ -1,0 +1,6 @@
+2026-06-16T09:15:00Z INFO service=identity-gateway key_set=ks-20260616-active loaded=true
+2026-06-16T09:16:12Z INFO request_id=auth-301 provider=contoso callback_status=200
+2026-06-16T09:17:44Z WARN request_id=auth-302 provider=fabrikam signature_kid=old-kid active_kid=new-kid
+2026-06-16T09:17:45Z ERROR request_id=auth-302 error=InvalidCallbackSignature provider=fabrikam user_region=us-east
+2026-06-16T09:18:11Z ERROR request_id=auth-303 error=InvalidCallbackSignature provider=fabrikam user_region=us-east
+2026-06-16T09:20:00Z INFO mitigation=restore_previous_key status=completed operator=identity-oncall

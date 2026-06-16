@@ -1,0 +1,25 @@
+{
+  "service": "orders-api",
+  "window": {
+    "start": "2026-06-16T14:00:00Z",
+    "end": "2026-06-16T14:05:00Z"
+  },
+  "errors": [
+    {
+      "code": "AcquireConnectionTimeout",
+      "count": 27,
+      "first_seen": "2026-06-16T14:02:29Z",
+      "sample_request_id": "req-703"
+    },
+    {
+      "code": "SlowQueryWarning",
+      "count": 8,
+      "first_seen": "2026-06-16T14:03:20Z",
+      "sample_request_id": "req-719"
+    }
+  ],
+  "suspected_change": {
+    "id": "deploy-8921",
+    "summary": "connection pool max lifetime reduced from 30m to 3m"
+  }
+}

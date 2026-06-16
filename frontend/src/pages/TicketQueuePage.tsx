@@ -1,5 +1,5 @@
-import { ArrowUpRight, Upload } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { ArrowUpRight, Trash2, Upload } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { ButtonLink } from "../components/ButtonLink";
@@ -14,14 +14,29 @@ const columnKeys = [
   "tickets.service",
   "tickets.status",
   "tickets.updated",
+  "tickets.actions",
 ] as const;
 
 export function TicketQueuePage() {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const tickets = useQuery({
     queryKey: ["tickets"],
     queryFn: () => supportOpsApi.listTickets(),
   });
+  const deleteTicket = useMutation({
+    mutationFn: (ticketId: string) => supportOpsApi.deleteTicket(ticketId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["tickets"] });
+    },
+  });
+
+  function requestDelete(ticketId: string) {
+    if (!window.confirm(t("tickets.deleteConfirm"))) {
+      return;
+    }
+    deleteTicket.mutate(ticketId);
+  }
 
   return (
     <section aria-labelledby="ticket-queue-title" className={styles.page}>
@@ -108,6 +123,18 @@ export function TicketQueuePage() {
                       hour: "2-digit",
                       minute: "2-digit",
                     }).format(new Date(ticket.updated_at))}
+                  </td>
+                  <td>
+                    <button
+                      aria-label={`${t("tickets.delete")} ${ticket.id}`}
+                      className={styles.iconButton}
+                      disabled={deleteTicket.isPending}
+                      onClick={() => requestDelete(ticket.id)}
+                      title={t("tickets.delete")}
+                      type="button"
+                    >
+                      <Trash2 aria-hidden="true" size={15} />
+                    </button>
                   </td>
                 </tr>
               ))}

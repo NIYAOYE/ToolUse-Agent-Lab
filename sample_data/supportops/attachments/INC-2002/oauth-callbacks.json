@@ -1,0 +1,22 @@
+{
+  "provider": "fabrikam",
+  "callback_failures": [
+    {
+      "request_id": "auth-302",
+      "signature_kid": "old-kid",
+      "active_kid": "new-kid",
+      "status": 401
+    },
+    {
+      "request_id": "auth-303",
+      "signature_kid": "old-kid",
+      "active_kid": "new-kid",
+      "status": 401
+    }
+  ],
+  "rotation": {
+    "started_at": "2026-06-16T09:10:00Z",
+    "completed_at": "2026-06-16T09:15:00Z",
+    "rollback_available": true
+  }
+}

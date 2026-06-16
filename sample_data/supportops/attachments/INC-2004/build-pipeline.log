@@ -1,0 +1,5 @@
+2026-06-16T07:30:00Z INFO job=build-881 branch=main stage=resolve-dependencies
+2026-06-16T07:30:08Z INFO registry=https://packages.internal/mirror cache=enabled
+2026-06-16T07:30:32Z WARN package=@internal/payment-client version=4.8.2 mirror_status=miss
+2026-06-16T07:30:34Z ERROR job=build-881 error=PackageNotFound package=@internal/payment-client version=4.8.2 registry=https://packages.internal/mirror
+2026-06-16T07:30:35Z INFO hint="upstream registry has version 4.8.2; mirror last sync was 2026-06-15T22:00:00Z"

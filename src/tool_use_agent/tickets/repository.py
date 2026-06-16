@@ -197,6 +197,14 @@ class SQLiteTicketRepository:
             raise KeyError("ticket_not_found")
         return self._ticket_from_row(row)
 
+    def delete_ticket(self, ticket_id: str) -> None:
+        with self._lock, self._connection:
+            self._require_ticket(ticket_id)
+            self._connection.execute(
+                "DELETE FROM tickets WHERE id = ?",
+                (ticket_id,),
+            )
+
     def list_tickets(
         self,
         *,
@@ -908,6 +916,27 @@ class SQLiteTicketRepository:
         with self._lock, self._connection:
             self._connection.executescript(
                 """
+                CREATE TABLE IF NOT EXISTS sessions (
+                    id TEXT PRIMARY KEY,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS tool_audits (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id TEXT NOT NULL,
+                    call_id TEXT NOT NULL,
+                    tool_name TEXT NOT NULL,
+                    arguments_json TEXT NOT NULL,
+                    result_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (session_id) REFERENCES sessions(id)
+                        ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_tool_audits_session_id
+                    ON tool_audits(session_id, id);
+
                 CREATE TABLE IF NOT EXISTS tickets (
                     id TEXT PRIMARY KEY,
                     title TEXT NOT NULL,

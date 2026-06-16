@@ -190,6 +190,27 @@ def test_attachment_is_written_inside_isolated_ticket_directory(tmp_path):
         repository.close()
 
 
+def test_delete_ticket_removes_attachment_files(tmp_path):
+    repository, service = build_service(tmp_path)
+    ticket = create_ticket(service)
+    try:
+        attachment = service.save_attachment(
+            ticket.id,
+            filename="orders.log",
+            media_type="text/plain",
+            content=b"timeout while acquiring connection",
+        )
+        stored = tmp_path / "workspace" / attachment.stored_path
+
+        service.delete_ticket(ticket.id)
+
+        assert not stored.exists()
+        with pytest.raises(KeyError):
+            repository.get_ticket(ticket.id)
+    finally:
+        repository.close()
+
+
 def test_attachment_rejects_forbidden_type_and_oversized_content(tmp_path):
     repository, service = build_service(tmp_path, max_bytes=4)
     ticket = create_ticket(service)

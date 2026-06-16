@@ -134,6 +134,27 @@
   text-underline-offset: 3px;
 }
 
+.iconButton {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border: var(--border-subtle);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.iconButton:hover:not(:disabled) {
+  border-color: var(--color-warning-dark);
+  color: var(--color-warning-dark);
+}
+
+.iconButton:disabled {
+  cursor: wait;
+  opacity: 0.45;
+}
+
 .emptyState {
   height: 230px;
   padding: var(--space-8);

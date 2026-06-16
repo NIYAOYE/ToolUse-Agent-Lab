@@ -28,6 +28,11 @@ export const supportOpsApi = {
       `/v1/tickets/${encodeURIComponent(ticketId)}`,
     );
   },
+  deleteTicket(ticketId: string) {
+    return apiRequest<void>(`/v1/tickets/${encodeURIComponent(ticketId)}`, {
+      method: "DELETE",
+    });
+  },
   importTickets(file: File) {
     const form = new FormData();
     form.append("file", file);

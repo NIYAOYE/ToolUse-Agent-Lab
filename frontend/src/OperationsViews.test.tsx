@@ -66,6 +66,57 @@ describe("Phase 7 operations views", () => {
     expect(screen.getByText("61.5s")).toBeInTheDocument();
   });
 
+  it("deletes a ticket after confirmation and refreshes the queue", async () => {
+    const firstPage = {
+      items: [
+        {
+          id: "INC-42",
+          title: "Checkout latency spike",
+          description: "Customers see elevated checkout latency.",
+          environment: "production",
+          service: "checkout-api",
+          priority: "P1",
+          category: "latency",
+          status: "NEW",
+          source: "manual",
+          created_at: "2026-06-15T12:00:00Z",
+          updated_at: "2026-06-15T12:05:00Z",
+        },
+      ],
+      total: 1,
+      page: 1,
+      page_size: 25,
+    };
+    const emptyPage = { items: [], total: 0, page: 1, page_size: 25 };
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(firstPage), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(emptyPage), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+    renderApp(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Delete INC-42" }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "/v1/tickets/INC-42",
+        expect.objectContaining({ method: "DELETE" }),
+      );
+    });
+    expect(await screen.findByText("No tickets to display")).toBeInTheDocument();
+  });
+
   it("shows complete tool arguments and results in the audit view", async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const path = String(input);

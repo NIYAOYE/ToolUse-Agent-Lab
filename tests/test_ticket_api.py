@@ -68,6 +68,31 @@ def test_missing_ticket_returns_stable_not_found_error(app):
     assert response.json()["details"] == {"ticket_id": "INC-missing"}
 
 
+def test_delete_ticket_removes_it_from_detail_and_list(app):
+    client = TestClient(app)
+    client.post("/v1/tickets", json=ticket_payload())
+
+    deleted = client.delete("/v1/tickets/INC-1042")
+    detail = client.get("/v1/tickets/INC-1042")
+    listed = client.get("/v1/tickets")
+
+    assert deleted.status_code == 204
+    assert detail.status_code == 404
+    assert listed.status_code == 200
+    assert listed.json()["total"] == 0
+    assert listed.json()["items"] == []
+
+
+def test_delete_missing_ticket_returns_stable_not_found_error(app):
+    response = TestClient(app).delete("/v1/tickets/INC-missing")
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "ticket_not_found"
+    assert response.json()["message"] == "Ticket INC-missing was not found."
+    assert response.json()["request_id"]
+    assert response.json()["details"] == {"ticket_id": "INC-missing"}
+
+
 def test_ticket_request_validation_uses_422(app):
     payload = ticket_payload()
     payload["title"] = ""

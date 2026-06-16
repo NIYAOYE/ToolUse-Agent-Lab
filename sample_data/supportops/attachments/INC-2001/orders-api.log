@@ -1,0 +1,8 @@
+2026-06-16T14:00:00Z INFO service=orders-api instance=orders-7f8d boot complete
+2026-06-16T14:01:05Z INFO request_id=req-701 route=/orders/checkout latency_ms=184 status=200
+2026-06-16T14:02:11Z WARN request_id=req-702 db_pool_in_use=94 db_pool_size=100 wait_ms=880
+2026-06-16T14:02:29Z ERROR request_id=req-703 error=AcquireConnectionTimeout db_pool_in_use=100 wait_ms=3000 route=/orders/checkout
+2026-06-16T14:02:31Z ERROR request_id=req-704 error=AcquireConnectionTimeout db_pool_in_use=100 wait_ms=3000 route=/orders/checkout
+2026-06-16T14:03:20Z WARN slow_query sql_hash=9af3 duration_ms=1840 table=orders
+2026-06-16T14:04:00Z INFO mitigation=scale_read_replicas status=started operator=oncall
+2026-06-16T14:05:08Z INFO request_id=req-705 route=/orders/checkout latency_ms=420 status=200

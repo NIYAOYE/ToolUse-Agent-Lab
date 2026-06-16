@@ -1,0 +1,38 @@
+[
+  {
+    "id": "INC-2001",
+    "title": "Orders API reports database pool exhaustion",
+    "description": "Checkout and order detail requests intermittently time out while acquiring a database connection after a traffic spike.",
+    "environment": "production",
+    "service": "orders-api",
+    "priority": "P1",
+    "category": "runtime/database"
+  },
+  {
+    "id": "INC-2002",
+    "title": "Identity gateway rejects OAuth callbacks",
+    "description": "A subset of OAuth callbacks fail signature validation after a key rotation window.",
+    "environment": "production",
+    "service": "identity-gateway",
+    "priority": "P1",
+    "category": "authentication/callback"
+  },
+  {
+    "id": "INC-2003",
+    "title": "Report export queue backlog keeps growing",
+    "description": "Scheduled report exports remain queued even though worker CPU and memory are within normal ranges.",
+    "environment": "staging",
+    "service": "report-worker",
+    "priority": "P2",
+    "category": "queue/backlog"
+  },
+  {
+    "id": "INC-2004",
+    "title": "CI build cannot resolve internal package",
+    "description": "Build jobs fail dependency resolution for an internal package after registry mirror configuration changes.",
+    "environment": "ci",
+    "service": "build-pipeline",
+    "priority": "P3",
+    "category": "build/dependency"
+  }
+]
