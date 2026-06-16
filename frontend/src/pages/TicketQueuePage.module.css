@@ -1,0 +1,134 @@
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  animation: route-enter var(--motion-route) ease-out both;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-8);
+  margin-bottom: clamp(32px, 6vw, 72px);
+}
+
+.coordinate,
+.queueMeta {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+}
+
+.pageHeader h1 {
+  max-width: 760px;
+  margin: var(--space-3) 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: clamp(2.7rem, 6vw, 5.6rem);
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  line-height: 0.92;
+}
+
+.pageHeader p {
+  max-width: 650px;
+  margin: 0;
+  color: var(--color-ink-soft);
+  font-size: clamp(0.98rem, 2vw, 1.2rem);
+  line-height: 1.55;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  flex: 0 0 auto;
+}
+
+.actions a {
+  gap: var(--space-2);
+}
+
+.queueFrame {
+  border: var(--border-strong);
+  background: var(--color-paper);
+  box-shadow: var(--shadow-offset);
+}
+
+.queueMeta {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0 var(--space-4);
+  border-bottom: var(--border-strong);
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.queueFrame table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.queueFrame th {
+  padding: var(--space-4);
+  color: var(--color-muted);
+  border-right: var(--border-subtle);
+  border-bottom: var(--border-strong);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.queueFrame th:last-child {
+  border-right: 0;
+}
+
+.emptyState {
+  height: 230px;
+  padding: var(--space-8);
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.emptyState > * {
+  display: block;
+}
+
+.emptyState strong {
+  margin: var(--space-3) 0 var(--space-2);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 600;
+}
+
+.emptyIndex {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  color: var(--color-warning-dark);
+}
+
+@media (max-width: 860px) {
+  .pageHeader {
+    align-items: flex-start;
+    flex-direction: column;
+    margin-bottom: var(--space-8);
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .actions a {
+    flex: 1;
+  }
+}

@@ -8,9 +8,11 @@ from tool_use_agent.investigations.models import (
     Approval,
     ApprovalDecision,
     DiagnosisReport,
+    DiagnosisTimeMetrics,
     Evidence,
     EvidenceKind,
     Investigation,
+    InvestigationEvent,
     InvestigationStatus,
 )
 from tool_use_agent.tickets.models import (
@@ -437,11 +439,58 @@ class SQLiteTicketRepository:
             self._connection.execute(
                 """
                 UPDATE investigations
-                SET status = ?, diagnosed_at = ?, stop_reason = NULL
+                SET status = ?,
+                    diagnosed_at = COALESCE(diagnosed_at, ?),
+                    stop_reason = NULL
                 WHERE id = ?
                 """,
                 (
                     InvestigationStatus.AWAITING_REVIEW.value,
+                    now,
+                    investigation_id,
+                ),
+            )
+        return self.get_investigation(investigation_id)
+
+    def mark_investigation_investigating(
+        self,
+        investigation_id: int,
+        *,
+        supplemental_instructions: str | None = None,
+    ) -> Investigation:
+        with self._lock, self._connection:
+            self.get_investigation(investigation_id)
+            self._connection.execute(
+                """
+                UPDATE investigations
+                SET status = ?,
+                    stop_reason = NULL,
+                    supplemental_instructions = ?
+                WHERE id = ?
+                """,
+                (
+                    InvestigationStatus.INVESTIGATING.value,
+                    supplemental_instructions,
+                    investigation_id,
+                ),
+            )
+        return self.get_investigation(investigation_id)
+
+    def mark_investigation_approved(
+        self,
+        investigation_id: int,
+    ) -> Investigation:
+        now = self._utc_now()
+        with self._lock, self._connection:
+            self.get_investigation(investigation_id)
+            self._connection.execute(
+                """
+                UPDATE investigations
+                SET status = ?, completed_at = ?, stop_reason = NULL
+                WHERE id = ?
+                """,
+                (
+                    InvestigationStatus.APPROVED.value,
                     now,
                     investigation_id,
                 ),
@@ -551,6 +600,100 @@ class SQLiteTicketRepository:
                 (investigation_id,),
             ).fetchall()
         return [self._evidence_from_row(row) for row in rows]
+
+    def add_investigation_event(
+        self,
+        investigation_id: int,
+        event: str,
+        payload: dict[str, object],
+    ) -> InvestigationEvent:
+        now = self._utc_now()
+        with self._lock, self._connection:
+            self.get_investigation(investigation_id)
+            cursor = self._connection.execute(
+                """
+                INSERT INTO investigation_events (
+                    investigation_id,
+                    event,
+                    payload_json,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    investigation_id,
+                    event,
+                    json.dumps(payload, ensure_ascii=False),
+                    now,
+                ),
+            )
+            event_id = int(cursor.lastrowid)
+        return InvestigationEvent(
+            id=event_id,
+            investigation_id=investigation_id,
+            event=event,
+            payload=dict(payload),
+            created_at=self._parse_datetime(now),
+        )
+
+    def list_investigation_events(
+        self,
+        investigation_id: int,
+        *,
+        after_id: int = 0,
+    ) -> list[InvestigationEvent]:
+        with self._lock:
+            self.get_investigation(investigation_id)
+            rows = self._connection.execute(
+                """
+                SELECT id, investigation_id, event, payload_json, created_at
+                FROM investigation_events
+                WHERE investigation_id = ? AND id > ?
+                ORDER BY id ASC
+                """,
+                (investigation_id, after_id),
+            ).fetchall()
+        return [
+            InvestigationEvent(
+                id=row["id"],
+                investigation_id=row["investigation_id"],
+                event=row["event"],
+                payload=json.loads(row["payload_json"]),
+                created_at=self._parse_datetime(row["created_at"]),
+            )
+            for row in rows
+        ]
+
+    def get_diagnosis_time_metrics(self) -> DiagnosisTimeMetrics:
+        with self._lock:
+            rows = self._connection.execute(
+                """
+                SELECT started_at, diagnosed_at
+                FROM investigations
+                WHERE diagnosed_at IS NOT NULL
+                ORDER BY diagnosed_at ASC
+                """
+            ).fetchall()
+        values = sorted(
+            (
+                self._parse_datetime(row["diagnosed_at"])
+                - self._parse_datetime(row["started_at"])
+            ).total_seconds()
+            for row in rows
+        )
+        if not values:
+            return DiagnosisTimeMetrics(0, None, None)
+        middle = len(values) // 2
+        if len(values) % 2:
+            median = values[middle]
+        else:
+            median = (values[middle - 1] + values[middle]) / 2
+        position = (len(values) - 1) * 0.75
+        lower = int(position)
+        upper = min(lower + 1, len(values) - 1)
+        fraction = position - lower
+        p75 = values[lower] + (values[upper] - values[lower]) * fraction
+        return DiagnosisTimeMetrics(len(values), median, p75)
 
     def save_diagnosis_report(
         self,
@@ -835,6 +978,19 @@ class SQLiteTicketRepository:
 
                 CREATE INDEX IF NOT EXISTS idx_evidence_investigation_id
                     ON evidence(investigation_id, id);
+
+                CREATE TABLE IF NOT EXISTS investigation_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    investigation_id INTEGER NOT NULL,
+                    event TEXT NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (investigation_id) REFERENCES investigations(id)
+                        ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_investigation_events_resume
+                    ON investigation_events(investigation_id, id);
 
                 CREATE TABLE IF NOT EXISTS diagnosis_reports (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,

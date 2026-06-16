@@ -5,11 +5,16 @@ from langchain_core.messages import AIMessage
 import pytest
 
 from tests.fakes import ScriptedChatModel
-from tool_use_agent.composition import build_service
+from tool_use_agent.composition import (
+    build_investigation_service,
+    build_service,
+)
 from tool_use_agent.config import Settings
 from tool_use_agent.llm.qwen import AgentConfigurationError
 from tool_use_agent.llm.summarizer import QwenConversationSummarizer
 from tool_use_agent.memory.models import MessageRecord
+from tool_use_agent.tickets.models import TicketPriority
+from tool_use_agent.tickets.repository import SQLiteTicketRepository
 
 
 def test_qwen_summarizer_parses_fenced_json_and_includes_previous_summary():
@@ -91,3 +96,48 @@ def test_build_service_requires_tavily_api_key(tmp_path):
 
     with pytest.raises(AgentConfigurationError, match="TAVILY_API_KEY"):
         build_service(settings)
+
+
+def test_build_investigation_service_uses_real_database_and_tools(
+    monkeypatch,
+    tmp_path,
+):
+    captured: dict[str, object] = {}
+
+    class FakeBindableModel:
+        def bind_tools(self, schemas):
+            captured["schemas"] = schemas
+            return ScriptedChatModel([AIMessage(content="unused")])
+
+    monkeypatch.setattr(
+        "tool_use_agent.composition.build_qwen_model",
+        lambda settings: FakeBindableModel(),
+    )
+    settings = replace(
+        Settings.from_env(),
+        dashscope_api_key="dash-test",
+        tavily_api_key="tvly-test",
+        database_path=tmp_path / "agent.db",
+        workspace_root=tmp_path / "workspace",
+    )
+    repository = SQLiteTicketRepository(settings.database_path)
+    repository.create_ticket(
+        ticket_id="INC-1042",
+        title="Timeout",
+        description="Request timeout.",
+        environment="production",
+        service="orders-api",
+        priority=TicketPriority.P1,
+    )
+    repository.close()
+
+    service = build_investigation_service(settings)
+    try:
+        investigation = service.start("INC-1042")
+
+        assert investigation.ticket_id == "INC-1042"
+        assert [
+            schema["function"]["name"] for schema in captured["schemas"]
+        ] == ["web_search", "read_file", "python_exec"]
+    finally:
+        service.close()

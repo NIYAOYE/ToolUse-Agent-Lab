@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tool_use_agent.tickets.models import TicketPriority
@@ -78,3 +78,19 @@ class Approval:
     final_draft: str
     review_notes: str
     created_at: datetime
+
+
+@dataclass(frozen=True)
+class InvestigationEvent:
+    id: int
+    investigation_id: int
+    event: str
+    payload: dict[str, Any]
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class DiagnosisTimeMetrics:
+    count: int
+    median_seconds: float | None
+    p75_seconds: float | None

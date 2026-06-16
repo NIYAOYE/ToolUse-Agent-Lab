@@ -12,7 +12,9 @@ from tool_use_agent.api.models import (
     SessionResponse,
 )
 from tool_use_agent.api.sse import encode_sse
+from tool_use_agent.api.investigations import create_investigation_router
 from tool_use_agent.api.tickets import create_ticket_router
+from tool_use_agent.investigations.service import InvestigationService
 from tool_use_agent.service import ChatService
 from tool_use_agent.tickets.service import TicketService
 
@@ -20,11 +22,16 @@ from tool_use_agent.tickets.service import TicketService
 def create_app(
     service: ChatService,
     ticket_service: TicketService | None = None,
+    investigation_service: InvestigationService | None = None,
 ) -> FastAPI:
     app = FastAPI(title="ToolUse Agent Lab", version="0.1.0")
 
     if ticket_service is not None:
         app.include_router(create_ticket_router(ticket_service))
+    if investigation_service is not None:
+        app.include_router(
+            create_investigation_router(investigation_service)
+        )
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:

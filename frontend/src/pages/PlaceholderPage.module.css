@@ -1,0 +1,40 @@
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  animation: route-enter var(--motion-route) ease-out both;
+}
+
+.coordinate,
+.hold {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+}
+
+.page h1 {
+  margin: var(--space-4) 0 var(--space-4);
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 8vw, 6.5rem);
+  line-height: 0.92;
+  letter-spacing: -0.06em;
+}
+
+.page p {
+  max-width: 620px;
+  margin: 0;
+  color: var(--color-ink-soft);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.rule {
+  width: min(100%, 720px);
+  height: 1px;
+  margin: var(--space-8) 0 var(--space-4);
+  background: var(--color-border-muted);
+}
+
+.hold {
+  color: var(--color-warning-dark);
+}
