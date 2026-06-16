@@ -4,12 +4,20 @@ import { Link } from "react-router-dom";
 
 import { ButtonLink } from "../components/ButtonLink";
 import { StatusBadge } from "../components/StatusBadge";
+import { useI18n } from "../i18n";
 import { supportOpsApi } from "../lib/supportOpsApi";
 import styles from "./TicketQueuePage.module.css";
 
-const columns = ["Priority", "Ticket", "Service", "Status", "Updated"];
+const columnKeys = [
+  "tickets.priority",
+  "tickets.ticket",
+  "tickets.service",
+  "tickets.status",
+  "tickets.updated",
+] as const;
 
 export function TicketQueuePage() {
+  const { t } = useI18n();
   const tickets = useQuery({
     queryKey: ["tickets"],
     queryFn: () => supportOpsApi.listTickets(),
@@ -19,19 +27,17 @@ export function TicketQueuePage() {
     <section aria-labelledby="ticket-queue-title" className={styles.page}>
       <header className={styles.pageHeader}>
         <div>
-          <div className={styles.coordinate}>VIEW / 01</div>
-          <h1 id="ticket-queue-title">Ticket Queue</h1>
-          <p>
-            Investigate incidents. Preserve evidence. Keep humans in control.
-          </p>
+          <div className={styles.coordinate}>{t("tickets.coordinate")}</div>
+          <h1 id="ticket-queue-title">{t("tickets.title")}</h1>
+          <p>{t("tickets.description")}</p>
         </div>
         <div className={styles.actions}>
           <ButtonLink to="/tickets/import">
             <Upload aria-hidden="true" size={16} />
-            Import
+            {t("tickets.import")}
           </ButtonLink>
           <ButtonLink to="/tickets/new" variant="primary">
-            New ticket
+            {t("tickets.newTicket")}
             <ArrowUpRight aria-hidden="true" size={16} />
           </ButtonLink>
         </div>
@@ -39,18 +45,20 @@ export function TicketQueuePage() {
 
       <div className={styles.queueFrame}>
         <div className={styles.queueMeta}>
-          <span>QUEUE / LIVE SOURCE</span>
+          <span>{t("tickets.meta")}</span>
           <span>
-            {tickets.data ? `${tickets.data.total} RECORDS` : "CONNECTING"}
+            {tickets.data
+              ? `${tickets.data.total} ${t("tickets.records")}`
+              : t("tickets.connecting")}
           </span>
         </div>
         <div className={styles.tableScroll}>
           <table>
             <thead>
               <tr>
-                {columns.map((column) => (
+                {columnKeys.map((column) => (
                   <th key={column} scope="col">
-                    {column}
+                    {t(column)}
                   </th>
                 ))}
               </tr>
@@ -58,20 +66,20 @@ export function TicketQueuePage() {
             <tbody>
               {tickets.isPending && (
                 <QueueMessage
-                  detail="Reading the SupportOps API."
-                  title="Loading ticket queue"
+                  detail={t("tickets.loadingDetail")}
+                  title={t("tickets.loadingTitle")}
                 />
               )}
               {tickets.isError && (
                 <QueueMessage
-                  detail="Verify the local API and retry."
-                  title="Ticket queue unavailable"
+                  detail={t("tickets.errorDetail")}
+                  title={t("tickets.errorTitle")}
                 />
               )}
               {tickets.data?.items.length === 0 && (
                 <QueueMessage
-                  detail="Create or import a ticket to begin."
-                  title="No tickets to display"
+                  detail={t("tickets.emptyDetail")}
+                  title={t("tickets.emptyTitle")}
                 />
               )}
               {tickets.data?.items.map((ticket) => (
@@ -114,7 +122,7 @@ export function TicketQueuePage() {
 function QueueMessage({ title, detail }: { title: string; detail: string }) {
   return (
     <tr>
-      <td className={styles.emptyState} colSpan={columns.length}>
+      <td className={styles.emptyState} colSpan={columnKeys.length}>
         <span className={styles.emptyIndex}>000</span>
         <strong>{title}</strong>
         <span>{detail}</span>

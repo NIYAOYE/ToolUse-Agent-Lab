@@ -6,6 +6,7 @@ import { App } from "./App";
 import { renderApp } from "./test/renderApp";
 
 beforeEach(() => {
+  window.localStorage.clear();
   vi.stubGlobal(
     "fetch",
     vi.fn((input: RequestInfo | URL) =>
@@ -46,5 +47,20 @@ describe("SupportOps application shell", () => {
       "aria-current",
       "page",
     );
+  });
+
+  it("switches the shell and queue page to Chinese", async () => {
+    renderApp(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "中文" }));
+
+    expect(
+      screen.getByRole("heading", { name: "工单队列" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "新建工单" }).length).toBeGreaterThan(
+      0,
+    );
+    expect(await screen.findByText("暂无工单")).toBeInTheDocument();
+    expect(screen.getByText("需要人工审核")).toBeInTheDocument();
   });
 });

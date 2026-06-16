@@ -1,0 +1,348 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+
+type Language = "en" | "zh";
+type TranslationKey = keyof typeof translations.en;
+
+const STORAGE_KEY = "supportops-language";
+
+const translations = {
+  en: {
+    "shell.navLabel": "Primary navigation",
+    "shell.tickets": "Tickets",
+    "shell.newTicket": "New Ticket",
+    "shell.import": "Import",
+    "shell.metrics": "Metrics",
+    "shell.network": "LOCAL / CONTROLLED NETWORK",
+    "shell.reviewNote": "Human authority remains final.",
+    "shell.apiConnected": "API CONNECTED",
+    "shell.humanReview": "HUMAN REVIEW REQUIRED",
+    "language.label": "Language",
+    "language.english": "English",
+    "language.chinese": "中文",
+    "status.NEW": "NEW",
+    "status.QUEUED": "QUEUED",
+    "status.INVESTIGATING": "INVESTIGATING",
+    "status.AWAITING_REVIEW": "AWAITING REVIEW",
+    "status.FAILED": "FAILED",
+    "status.APPROVED": "APPROVED",
+    "tickets.coordinate": "VIEW / 01",
+    "tickets.title": "Ticket Queue",
+    "tickets.description":
+      "Investigate incidents. Preserve evidence. Keep humans in control.",
+    "tickets.import": "Import",
+    "tickets.newTicket": "New ticket",
+    "tickets.meta": "QUEUE / LIVE SOURCE",
+    "tickets.connecting": "CONNECTING",
+    "tickets.records": "RECORDS",
+    "tickets.priority": "Priority",
+    "tickets.ticket": "Ticket",
+    "tickets.service": "Service",
+    "tickets.status": "Status",
+    "tickets.updated": "Updated",
+    "tickets.loadingTitle": "Loading ticket queue",
+    "tickets.loadingDetail": "Reading the SupportOps API.",
+    "tickets.errorTitle": "Ticket queue unavailable",
+    "tickets.errorDetail": "Verify the local API and retry.",
+    "tickets.emptyTitle": "No tickets to display",
+    "tickets.emptyDetail": "Create or import a ticket to begin.",
+    "placeholder.coordinate": "ROUTE / FOUNDATION",
+    "placeholder.hold": "INTERFACE RESERVED",
+    "placeholder.createTitle": "Create Ticket",
+    "placeholder.createDescription":
+      "Manual ticket intake route is ready for the Phase 6 workflow.",
+    "import.coordinate": "INTAKE / BATCH",
+    "import.title": "Import Tickets",
+    "import.description":
+      "Submit one CSV or JSON file. Validation is atomic: invalid rows do not leave partial tickets behind.",
+    "import.fileLabel": "CSV or JSON file",
+    "import.uploadEyebrow": "CONTROLLED MULTIPART UPLOAD",
+    "import.button": "Import tickets",
+    "import.pending": "Importing...",
+    "import.resultSuffix": "tickets imported",
+    "import.boundary": "IMPORT BOUNDARY",
+    "import.boundaryFormats": "Accepted formats: UTF-8 CSV and JSON.",
+    "import.boundaryFields":
+      "Required fields follow the ticket creation contract.",
+    "import.boundaryDuplicates":
+      "Duplicate IDs and invalid rows reject the full batch.",
+    "import.boundarySize": "File-size limits are enforced by the backend.",
+    "import.boundaryAuto":
+      "No investigation starts automatically after import.",
+    "metrics.coordinate": "METRIC / FIRST DIAGNOSIS",
+    "metrics.title": "Diagnosis Time",
+    "metrics.description":
+      "Elapsed time from investigation start to the first structured diagnosis. This view does not measure approval or resolution time.",
+    "metrics.loading": "Loading metrics",
+    "metrics.error": "Metrics unavailable",
+    "metrics.sample": "Diagnosed sample",
+    "metrics.sampleDetail": "diagnosed tickets",
+    "metrics.median": "Median",
+    "metrics.medianDetail":
+      "Half of first diagnoses completed at or below this duration.",
+    "metrics.p75": "P75",
+    "metrics.p75Detail":
+      "Seventy-five percent completed at or below this duration.",
+    "audit.invalid": "Invalid investigation ID.",
+    "audit.back": "Back to workbench",
+    "audit.coordinate": "AUDIT",
+    "audit.title": "Investigation Audit",
+    "audit.description":
+      "Read-only trace of tool inputs, outputs, evidence, events, and human decisions for this investigation.",
+    "audit.loading": "Loading audit trace",
+    "audit.error": "Audit trace unavailable",
+    "audit.record": "INVESTIGATION RECORD",
+    "audit.ticket": "Ticket",
+    "audit.session": "Session",
+    "audit.status": "Status",
+    "audit.events": "Events",
+    "audit.evidence": "Evidence",
+    "audit.decisions": "Decisions",
+    "audit.toolCalls": "Tool calls",
+    "audit.noTools": "No tool calls were recorded.",
+    "audit.arguments": "Arguments",
+    "audit.result": "Result",
+    "audit.investigationEvents": "Investigation events",
+    "audit.noEvents": "No events recorded.",
+    "audit.evidenceLedger": "Evidence ledger",
+    "audit.noEvidence": "No evidence recorded.",
+    "audit.humanDecisions": "Human decisions",
+    "audit.noDecisions": "No decisions recorded.",
+    "audit.reviewNotes": "Review notes",
+    "audit.noReviewNotes": "No review notes.",
+    "audit.finalDraft": "Final draft",
+    "workbench.loading": "Loading workbench",
+    "workbench.unavailable": "Ticket unavailable",
+    "workbench.back": "Ticket queue",
+    "workbench.audit": "Audit",
+    "workbench.queue": "Ticket queue",
+    "workbench.service": "Service",
+    "workbench.environment": "Environment",
+    "workbench.category": "Category",
+    "workbench.unclassified": "Unclassified",
+    "workbench.source": "Source",
+    "workbench.incident": "Incident statement",
+    "workbench.details": "Investigation details",
+    "workbench.investigation": "Investigation",
+    "workbench.directed": "Human-directed investigation",
+    "workbench.startDescription":
+      "Add optional boundaries, then start the controlled tool loop.",
+    "workbench.instructions": "Supplemental instructions",
+    "workbench.instructionsPlaceholder":
+      "Example: prioritize attached logs; do not infer customer impact.",
+    "workbench.start": "Start investigation",
+    "workbench.starting": "Starting...",
+    "workbench.loadingInvestigation": "Loading investigation",
+    "workbench.timeline": "Timeline",
+    "workbench.noEvents": "No events recorded yet.",
+    "workbench.evidence": "Evidence",
+    "workbench.verified": "VERIFIED",
+    "workbench.openSource": "Open source",
+    "workbench.review": "Diagnosis review",
+    "workbench.reportPending": "REPORT / PENDING",
+    "workbench.reportPendingDetail":
+      "The structured diagnosis will appear after the investigation completes.",
+    "workbench.reportCategory": "Category",
+    "workbench.confidence": "Confidence",
+    "workbench.rootCause": "Root cause",
+    "workbench.recommendedActions": "Recommended actions",
+    "workbench.finalReply": "Final reply",
+    "workbench.reviewNotes": "Review notes",
+    "workbench.reviewPlaceholder":
+      "Required when returning the investigation.",
+    "workbench.approve": "Approve diagnosis",
+    "workbench.return": "Return",
+    "workbench.failed": "Investigation failed.",
+    "workbench.retry": "Retry investigation",
+    "workbench.operationFailed": "The operation failed.",
+  },
+  zh: {
+    "shell.navLabel": "主导航",
+    "shell.tickets": "工单",
+    "shell.newTicket": "新建工单",
+    "shell.import": "导入",
+    "shell.metrics": "指标",
+    "shell.network": "本地 / 受控网络",
+    "shell.reviewNote": "人工权限始终为最终判断。",
+    "shell.apiConnected": "API 已连接",
+    "shell.humanReview": "需要人工审核",
+    "language.label": "语言",
+    "language.english": "English",
+    "language.chinese": "中文",
+    "status.NEW": "新建",
+    "status.QUEUED": "排队中",
+    "status.INVESTIGATING": "调查中",
+    "status.AWAITING_REVIEW": "待审核",
+    "status.FAILED": "失败",
+    "status.APPROVED": "已批准",
+    "tickets.coordinate": "视图 / 01",
+    "tickets.title": "工单队列",
+    "tickets.description": "调查事件，保留证据，让人工保持控制。",
+    "tickets.import": "导入",
+    "tickets.newTicket": "新建工单",
+    "tickets.meta": "队列 / 实时来源",
+    "tickets.connecting": "连接中",
+    "tickets.records": "条记录",
+    "tickets.priority": "优先级",
+    "tickets.ticket": "工单",
+    "tickets.service": "服务",
+    "tickets.status": "状态",
+    "tickets.updated": "更新时间",
+    "tickets.loadingTitle": "正在加载工单队列",
+    "tickets.loadingDetail": "正在读取 SupportOps API。",
+    "tickets.errorTitle": "工单队列不可用",
+    "tickets.errorDetail": "请确认本地 API 后重试。",
+    "tickets.emptyTitle": "暂无工单",
+    "tickets.emptyDetail": "创建或导入工单后开始。",
+    "placeholder.coordinate": "路由 / 基础",
+    "placeholder.hold": "界面预留",
+    "placeholder.createTitle": "创建工单",
+    "placeholder.createDescription": "手动工单入口已为工作流预留。",
+    "import.coordinate": "接入 / 批量",
+    "import.title": "导入工单",
+    "import.description":
+      "提交一个 CSV 或 JSON 文件。校验是原子的：无效行不会留下部分工单。",
+    "import.fileLabel": "CSV 或 JSON 文件",
+    "import.uploadEyebrow": "受控 multipart 上传",
+    "import.button": "导入工单",
+    "import.pending": "正在导入...",
+    "import.resultSuffix": "条工单已导入",
+    "import.boundary": "导入边界",
+    "import.boundaryFormats": "支持格式：UTF-8 CSV 和 JSON。",
+    "import.boundaryFields": "必填字段遵循工单创建契约。",
+    "import.boundaryDuplicates": "重复 ID 和无效行会拒绝整批导入。",
+    "import.boundarySize": "后端会执行文件大小限制。",
+    "import.boundaryAuto": "导入后不会自动启动调查。",
+    "metrics.coordinate": "指标 / 首次诊断",
+    "metrics.title": "诊断时间",
+    "metrics.description":
+      "从调查开始到第一次结构化诊断的耗时。此视图不衡量审批或解决时间。",
+    "metrics.loading": "正在加载指标",
+    "metrics.error": "指标不可用",
+    "metrics.sample": "已诊断样本",
+    "metrics.sampleDetail": "张工单已诊断",
+    "metrics.median": "中位数",
+    "metrics.medianDetail": "一半首次诊断在该时长内完成。",
+    "metrics.p75": "P75",
+    "metrics.p75Detail": "75% 的首次诊断在该时长内完成。",
+    "audit.invalid": "调查 ID 无效。",
+    "audit.back": "返回工作台",
+    "audit.coordinate": "审计",
+    "audit.title": "调查审计",
+    "audit.description": "只读追踪本次调查的工具输入、输出、证据、事件和人工决策。",
+    "audit.loading": "正在加载审计轨迹",
+    "audit.error": "审计轨迹不可用",
+    "audit.record": "调查记录",
+    "audit.ticket": "工单",
+    "audit.session": "会话",
+    "audit.status": "状态",
+    "audit.events": "事件",
+    "audit.evidence": "证据",
+    "audit.decisions": "决策",
+    "audit.toolCalls": "工具调用",
+    "audit.noTools": "没有记录工具调用。",
+    "audit.arguments": "参数",
+    "audit.result": "结果",
+    "audit.investigationEvents": "调查事件",
+    "audit.noEvents": "没有记录事件。",
+    "audit.evidenceLedger": "证据账本",
+    "audit.noEvidence": "没有记录证据。",
+    "audit.humanDecisions": "人工决策",
+    "audit.noDecisions": "没有记录决策。",
+    "audit.reviewNotes": "审核备注",
+    "audit.noReviewNotes": "没有审核备注。",
+    "audit.finalDraft": "最终草稿",
+    "workbench.loading": "正在加载工作台",
+    "workbench.unavailable": "工单不可用",
+    "workbench.back": "工单队列",
+    "workbench.audit": "审计",
+    "workbench.queue": "工单队列",
+    "workbench.service": "服务",
+    "workbench.environment": "环境",
+    "workbench.category": "分类",
+    "workbench.unclassified": "未分类",
+    "workbench.source": "来源",
+    "workbench.incident": "事件描述",
+    "workbench.details": "调查详情",
+    "workbench.investigation": "调查",
+    "workbench.directed": "人工指导的调查",
+    "workbench.startDescription": "可补充边界要求，然后启动受控工具循环。",
+    "workbench.instructions": "补充调查要求",
+    "workbench.instructionsPlaceholder": "示例：优先查看附件日志；不要推断客户影响。",
+    "workbench.start": "启动调查",
+    "workbench.starting": "正在启动...",
+    "workbench.loadingInvestigation": "正在加载调查",
+    "workbench.timeline": "时间线",
+    "workbench.noEvents": "还没有记录事件。",
+    "workbench.evidence": "证据",
+    "workbench.verified": "已验证",
+    "workbench.openSource": "打开来源",
+    "workbench.review": "诊断审核",
+    "workbench.reportPending": "报告 / 等待中",
+    "workbench.reportPendingDetail": "调查完成后会显示结构化诊断。",
+    "workbench.reportCategory": "分类",
+    "workbench.confidence": "置信度",
+    "workbench.rootCause": "根因",
+    "workbench.recommendedActions": "建议操作",
+    "workbench.finalReply": "最终回复",
+    "workbench.reviewNotes": "审核备注",
+    "workbench.reviewPlaceholder": "退回调查时必须填写。",
+    "workbench.approve": "批准诊断",
+    "workbench.return": "退回",
+    "workbench.failed": "调查失败。",
+    "workbench.retry": "重试调查",
+    "workbench.operationFailed": "操作失败。",
+  },
+} as const;
+
+type I18nValue = {
+  language: Language;
+  setLanguage: (language: Language) => void;
+  t: (key: TranslationKey) => string;
+};
+
+const I18nContext = createContext<I18nValue | null>(null);
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window === "undefined") {
+      return "en";
+    }
+    return window.localStorage.getItem(STORAGE_KEY) === "zh" ? "zh" : "en";
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, language);
+    document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
+  }, [language]);
+
+  const setLanguage = useCallback((next: Language) => {
+    setLanguageState(next);
+  }, []);
+
+  const value = useMemo<I18nValue>(
+    () => ({
+      language,
+      setLanguage,
+      t: (key) => translations[language][key],
+    }),
+    [language, setLanguage],
+  );
+
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+}
+
+export function useI18n() {
+  const value = useContext(I18nContext);
+  if (!value) {
+    throw new Error("useI18n must be used within I18nProvider.");
+  }
+  return value;
+}

@@ -1,4 +1,5 @@
 import type { InvestigationStatus, TicketStatus } from "../lib/contracts";
+import { useI18n } from "../i18n";
 import styles from "./StatusBadge.module.css";
 
 type StatusBadgeProps = {
@@ -6,9 +7,11 @@ type StatusBadgeProps = {
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {
+  const { t } = useI18n();
+
   return (
     <span className={`${styles.badge} ${styles[status.toLowerCase()] ?? ""}`}>
-      {status}
+      {t(`status.${status}`)}
     </span>
   );
 }

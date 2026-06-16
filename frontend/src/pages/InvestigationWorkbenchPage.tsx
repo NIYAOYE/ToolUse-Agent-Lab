@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { StatusBadge } from "../components/StatusBadge";
+import { useI18n } from "../i18n";
 import type {
   ApprovalDecision,
   InvestigationDetail,
@@ -22,6 +23,7 @@ import styles from "./InvestigationWorkbenchPage.module.css";
 const terminalStatuses = new Set(["AWAITING_REVIEW", "FAILED", "APPROVED"]);
 
 export function InvestigationWorkbenchPage() {
+  const { t } = useI18n();
   const { ticketId = "" } = useParams();
   const queryClient = useQueryClient();
   const [startedInvestigationId, setStartedInvestigationId] = useState<
@@ -115,10 +117,10 @@ export function InvestigationWorkbenchPage() {
   );
 
   if (ticketDetail.isPending) {
-    return <WorkbenchMessage title="Loading workbench" />;
+    return <WorkbenchMessage title={t("workbench.loading")} />;
   }
   if (ticketDetail.isError || !ticketDetail.data) {
-    return <WorkbenchMessage title="Ticket unavailable" />;
+    return <WorkbenchMessage title={t("workbench.unavailable")} />;
   }
 
   const { ticket } = ticketDetail.data;
@@ -128,7 +130,7 @@ export function InvestigationWorkbenchPage() {
       <header className={styles.header}>
         <div>
           <Link className={styles.backLink} to="/tickets">
-            <ArrowLeft aria-hidden="true" size={15} /> Ticket queue
+            <ArrowLeft aria-hidden="true" size={15} /> {t("workbench.back")}
           </Link>
           <span className={styles.coordinate}>WORKBENCH / {ticket.id}</span>
           <h1 id="workbench-title">{ticket.title}</h1>
@@ -138,15 +140,15 @@ export function InvestigationWorkbenchPage() {
           <StatusBadge status={currentInvestigation?.status ?? ticket.status} />
           {investigationId && (
             <Link className={styles.auditLink} to={`/audits/${investigationId}`}>
-              <ClipboardList aria-hidden="true" size={14} /> Audit
+              <ClipboardList aria-hidden="true" size={14} /> {t("workbench.audit")}
             </Link>
           )}
         </div>
       </header>
 
       <div className={styles.workbench}>
-        <aside aria-label="Ticket queue" className={styles.queuePanel}>
-          <PanelHeader index="01" title="Ticket queue" />
+        <aside aria-label={t("workbench.queue")} className={styles.queuePanel}>
+          <PanelHeader index="01" title={t("workbench.queue")} />
           <div className={styles.ticketList}>
             {ticketQueue.data?.items.map((item) => (
               <Link
@@ -162,34 +164,34 @@ export function InvestigationWorkbenchPage() {
             ))}
           </div>
           <dl className={styles.ticketFacts}>
-            <div><dt>Service</dt><dd>{ticket.service}</dd></div>
-            <div><dt>Environment</dt><dd>{ticket.environment}</dd></div>
-            <div><dt>Category</dt><dd>{ticket.category ?? "Unclassified"}</dd></div>
-            <div><dt>Source</dt><dd>{ticket.source}</dd></div>
+            <div><dt>{t("workbench.service")}</dt><dd>{ticket.service}</dd></div>
+            <div><dt>{t("workbench.environment")}</dt><dd>{ticket.environment}</dd></div>
+            <div><dt>{t("workbench.category")}</dt><dd>{ticket.category ?? t("workbench.unclassified")}</dd></div>
+            <div><dt>{t("workbench.source")}</dt><dd>{ticket.source}</dd></div>
           </dl>
           <div className={styles.ticketDescription}>
-            <span>Incident statement</span>
+            <span>{t("workbench.incident")}</span>
             <p>{ticket.description}</p>
           </div>
         </aside>
 
         <section
-          aria-label="Investigation details"
+          aria-label={t("workbench.details")}
           className={styles.investigationPanel}
         >
-          <PanelHeader index="02" title="Investigation" />
+          <PanelHeader index="02" title={t("workbench.investigation")} />
           {!investigationId && (
             <div className={styles.startBlock}>
               <ShieldAlert aria-hidden="true" size={26} />
-              <h2>Human-directed investigation</h2>
-              <p>Add optional boundaries, then start the controlled tool loop.</p>
+              <h2>{t("workbench.directed")}</h2>
+              <p>{t("workbench.startDescription")}</p>
               <label htmlFor="investigation-instructions">
-                Supplemental instructions
+                {t("workbench.instructions")}
               </label>
               <textarea
                 id="investigation-instructions"
                 onChange={(event) => setInstructions(event.target.value)}
-                placeholder="Example: prioritize attached logs; do not infer customer impact."
+                placeholder={t("workbench.instructionsPlaceholder")}
                 value={instructions}
               />
               <button
@@ -198,34 +200,37 @@ export function InvestigationWorkbenchPage() {
                 type="button"
               >
                 <Play aria-hidden="true" size={15} />
-                {start.isPending ? "Starting..." : "Start investigation"}
+                {start.isPending ? t("workbench.starting") : t("workbench.start")}
               </button>
               {start.isError && (
                 <p className={styles.errorMessage} role="alert">
-                  {errorMessage(start.error)}
+                  {errorMessage(start.error, t("workbench.operationFailed"))}
                 </p>
               )}
             </div>
           )}
           {investigationId && investigationDetail.isPending && (
-            <WorkbenchMessage compact title="Loading investigation" />
+            <WorkbenchMessage compact title={t("workbench.loadingInvestigation")} />
           )}
           {investigationDetail.isError && (
             <p className={styles.errorMessage} role="alert">
-              {errorMessage(investigationDetail.error)}
+              {errorMessage(
+                investigationDetail.error,
+                t("workbench.operationFailed"),
+              )}
             </p>
           )}
           {investigationDetail.data && (
             <>
               <section className={styles.timeline}>
                 <div className={styles.sectionTitle}>
-                  <h2>Timeline</h2>
+                  <h2>{t("workbench.timeline")}</h2>
                   <StatusBadge
                     status={investigationDetail.data.investigation.status}
                   />
                 </div>
                 {investigationDetail.data.events.length === 0 ? (
-                  <p className={styles.muted}>No events recorded yet.</p>
+                  <p className={styles.muted}>{t("workbench.noEvents")}</p>
                 ) : (
                   <ol>
                     {investigationDetail.data.events.map((event) => (
@@ -240,9 +245,9 @@ export function InvestigationWorkbenchPage() {
 
               <section className={styles.evidenceSection}>
                 <div className={styles.sectionTitle}>
-                  <h2>Evidence</h2>
+                  <h2>{t("workbench.evidence")}</h2>
                   <span>
-                    {investigationDetail.data.evidence.length} VERIFIED
+                    {investigationDetail.data.evidence.length} {t("workbench.verified")}
                   </span>
                 </div>
                 <div className={styles.evidenceList}>
@@ -259,7 +264,7 @@ export function InvestigationWorkbenchPage() {
                           rel="noreferrer"
                           target="_blank"
                         >
-                          Open source
+                          {t("workbench.openSource")}
                           <ExternalLink aria-hidden="true" size={12} />
                         </a>
                       )}
@@ -271,34 +276,31 @@ export function InvestigationWorkbenchPage() {
           )}
         </section>
 
-        <aside aria-label="Diagnosis and review" className={styles.reviewPanel}>
-          <PanelHeader index="03" title="Diagnosis review" />
+        <aside aria-label={t("workbench.review")} className={styles.reviewPanel}>
+          <PanelHeader index="03" title={t("workbench.review")} />
           {!report && (
             <div className={styles.pendingReport}>
-              <span>REPORT / PENDING</span>
-              <p>
-                The structured diagnosis will appear after the investigation
-                completes.
-              </p>
+              <span>{t("workbench.reportPending")}</span>
+              <p>{t("workbench.reportPendingDetail")}</p>
             </div>
           )}
           {report && (
             <>
               <div className={styles.reportSummary}>
                 <div>
-                  <span>Category</span>
+                  <span>{t("workbench.reportCategory")}</span>
                   <strong>{report.category}</strong>
                 </div>
                 <div>
-                  <span>Confidence</span>
+                  <span>{t("workbench.confidence")}</span>
                   <strong>{Math.round(report.confidence * 100)}%</strong>
                 </div>
                 <div className={styles.rootCause}>
-                  <span>Root cause</span>
+                  <span>{t("workbench.rootCause")}</span>
                   <p>{report.root_cause}</p>
                 </div>
                 <div className={styles.rootCause}>
-                  <span>Recommended actions</span>
+                  <span>{t("workbench.recommendedActions")}</span>
                   <ol>
                     {report.recommended_actions.map((action) => (
                       <li key={action}>{action}</li>
@@ -308,20 +310,20 @@ export function InvestigationWorkbenchPage() {
               </div>
 
               <div className={styles.reviewForm}>
-                <label htmlFor="final-reply">Final reply</label>
+                <label htmlFor="final-reply">{t("workbench.finalReply")}</label>
                 <textarea
-                  aria-label="Final reply"
+                  aria-label={t("workbench.finalReply")}
                   disabled={!canReview}
                   id="final-reply"
                   onChange={(event) => setFinalDraft(event.target.value)}
                   value={finalDraft}
                 />
-                <label htmlFor="review-notes">Review notes</label>
+                <label htmlFor="review-notes">{t("workbench.reviewNotes")}</label>
                 <textarea
                   disabled={!canReview}
                   id="review-notes"
                   onChange={(event) => setReviewNotes(event.target.value)}
-                  placeholder="Required when returning the investigation."
+                  placeholder={t("workbench.reviewPlaceholder")}
                   value={reviewNotes}
                 />
                 {canReview && (
@@ -332,20 +334,20 @@ export function InvestigationWorkbenchPage() {
                       onClick={() => decide.mutate(approveDecision)}
                       type="button"
                     >
-                      <Check aria-hidden="true" size={15} /> Approve diagnosis
+                      <Check aria-hidden="true" size={15} /> {t("workbench.approve")}
                     </button>
                     <button
                       disabled={!reviewNotes.trim() || decide.isPending}
                       onClick={() => decide.mutate("returned")}
                       type="button"
                     >
-                      <RotateCcw aria-hidden="true" size={15} /> Return
+                      <RotateCcw aria-hidden="true" size={15} /> {t("workbench.return")}
                     </button>
                   </div>
                 )}
                 {decide.isError && (
                   <p className={styles.errorMessage} role="alert">
-                    {errorMessage(decide.error)}
+                    {errorMessage(decide.error, t("workbench.operationFailed"))}
                   </p>
                 )}
               </div>
@@ -353,13 +355,13 @@ export function InvestigationWorkbenchPage() {
           )}
           {currentInvestigation?.status === "FAILED" && (
             <div className={styles.retryBlock}>
-              <p>{currentInvestigation.stop_reason ?? "Investigation failed."}</p>
+              <p>{currentInvestigation.stop_reason ?? t("workbench.failed")}</p>
               <button
                 disabled={start.isPending}
                 onClick={() => start.mutate()}
                 type="button"
               >
-                <RotateCcw aria-hidden="true" size={15} /> Retry investigation
+                <RotateCcw aria-hidden="true" size={15} /> {t("workbench.retry")}
               </button>
             </div>
           )}
@@ -406,6 +408,6 @@ function formatTime(value: string) {
   }).format(new Date(value));
 }
 
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "The operation failed.";
+function errorMessage(error: unknown, fallback = "The operation failed.") {
+  return error instanceof Error ? error.message : fallback;
 }

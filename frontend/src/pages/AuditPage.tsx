@@ -3,10 +3,12 @@ import { ArrowLeft } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 
 import { StatusBadge } from "../components/StatusBadge";
+import { useI18n } from "../i18n";
 import { supportOpsApi } from "../lib/supportOpsApi";
 import styles from "./OperationsViews.module.css";
 
 export function AuditPage() {
+  const { t } = useI18n();
   const { investigationId = "" } = useParams();
   const parsedId = Number(investigationId);
   const enabled = Number.isInteger(parsedId) && parsedId > 0;
@@ -22,7 +24,7 @@ export function AuditPage() {
   });
 
   if (!enabled) {
-    return <div className={styles.error}>Invalid investigation ID.</div>;
+    return <div className={styles.error}>{t("audit.invalid")}</div>;
   }
 
   return (
@@ -37,41 +39,40 @@ export function AuditPage() {
                 : "/tickets"
             }
           >
-            <ArrowLeft aria-hidden="true" size={14} /> Back to workbench
+            <ArrowLeft aria-hidden="true" size={14} /> {t("audit.back")}
           </Link>
-          <span className={styles.coordinate}>AUDIT / {investigationId}</span>
-          <h1 id="audit-title">Investigation Audit</h1>
-          <p>
-            Read-only trace of tool inputs, outputs, evidence, events, and human
-            decisions for this investigation.
-          </p>
+          <span className={styles.coordinate}>
+            {t("audit.coordinate")} / {investigationId}
+          </span>
+          <h1 id="audit-title">{t("audit.title")}</h1>
+          <p>{t("audit.description")}</p>
         </div>
       </header>
 
       {(detail.isPending || audits.isPending) && (
-        <div className={styles.emptyState}>Loading audit trace</div>
+        <div className={styles.emptyState}>{t("audit.loading")}</div>
       )}
       {(detail.isError || audits.isError) && (
-        <div className={styles.error}>Audit trace unavailable</div>
+        <div className={styles.error}>{t("audit.error")}</div>
       )}
       {detail.data && audits.data && (
         <div className={styles.auditGrid}>
           <aside className={`${styles.panel} ${styles.auditSummary}`}>
-            <span className={styles.eyebrow}>INVESTIGATION RECORD</span>
+            <span className={styles.eyebrow}>{t("audit.record")}</span>
             <dl className={styles.facts}>
-              <div><dt>Ticket</dt><dd>{detail.data.investigation.ticket_id}</dd></div>
-              <div><dt>Session</dt><dd>{detail.data.investigation.session_id}</dd></div>
-              <div><dt>Status</dt><dd><StatusBadge status={detail.data.investigation.status} /></dd></div>
-              <div><dt>Events</dt><dd>{detail.data.events.length}</dd></div>
-              <div><dt>Evidence</dt><dd>{detail.data.evidence.length}</dd></div>
-              <div><dt>Decisions</dt><dd>{detail.data.approvals.length}</dd></div>
-              <div><dt>Tool calls</dt><dd>{audits.data.length}</dd></div>
+              <div><dt>{t("audit.ticket")}</dt><dd>{detail.data.investigation.ticket_id}</dd></div>
+              <div><dt>{t("audit.session")}</dt><dd>{detail.data.investigation.session_id}</dd></div>
+              <div><dt>{t("audit.status")}</dt><dd><StatusBadge status={detail.data.investigation.status} /></dd></div>
+              <div><dt>{t("audit.events")}</dt><dd>{detail.data.events.length}</dd></div>
+              <div><dt>{t("audit.evidence")}</dt><dd>{detail.data.evidence.length}</dd></div>
+              <div><dt>{t("audit.decisions")}</dt><dd>{detail.data.approvals.length}</dd></div>
+              <div><dt>{t("audit.toolCalls")}</dt><dd>{audits.data.length}</dd></div>
             </dl>
           </aside>
 
           <div className={styles.auditList}>
             {audits.data.length === 0 && (
-              <div className={styles.emptyState}>No tool calls were recorded.</div>
+              <div className={styles.emptyState}>{t("audit.noTools")}</div>
             )}
             {audits.data.map((audit, index) => (
               <article className={styles.auditRecord} key={audit.id}>
@@ -83,11 +84,11 @@ export function AuditPage() {
                 </header>
                 <div className={styles.auditRecordBody}>
                   <section>
-                    <span className={styles.fieldLabel}>Arguments</span>
+                    <span className={styles.fieldLabel}>{t("audit.arguments")}</span>
                     <pre>{JSON.stringify(audit.arguments, null, 2)}</pre>
                   </section>
                   <section>
-                    <span className={styles.fieldLabel}>Result</span>
+                    <span className={styles.fieldLabel}>{t("audit.result")}</span>
                     <pre>{JSON.stringify(audit.result, null, 2)}</pre>
                   </section>
                 </div>
@@ -95,8 +96,8 @@ export function AuditPage() {
             ))}
 
             <section className={styles.ledger}>
-              <h2>Investigation events</h2>
-              {detail.data.events.length === 0 && <p>No events recorded.</p>}
+              <h2>{t("audit.investigationEvents")}</h2>
+              {detail.data.events.length === 0 && <p>{t("audit.noEvents")}</p>}
               {detail.data.events.map((event) => (
                 <article className={styles.ledgerItem} key={event.id}>
                   <header>
@@ -109,8 +110,8 @@ export function AuditPage() {
             </section>
 
             <section className={styles.ledger}>
-              <h2>Evidence ledger</h2>
-              {detail.data.evidence.length === 0 && <p>No evidence recorded.</p>}
+              <h2>{t("audit.evidenceLedger")}</h2>
+              {detail.data.evidence.length === 0 && <p>{t("audit.noEvidence")}</p>}
               {detail.data.evidence.map((evidence) => (
                 <article className={styles.ledgerItem} key={evidence.id}>
                   <header>
@@ -124,17 +125,17 @@ export function AuditPage() {
             </section>
 
             <section className={styles.ledger}>
-              <h2>Human decisions</h2>
-              {detail.data.approvals.length === 0 && <p>No decisions recorded.</p>}
+              <h2>{t("audit.humanDecisions")}</h2>
+              {detail.data.approvals.length === 0 && <p>{t("audit.noDecisions")}</p>}
               {detail.data.approvals.map((approval) => (
                 <article className={styles.ledgerItem} key={approval.id}>
                   <header>
                     <strong>{approval.decision}</strong>
                     <time>{formatDate(approval.created_at)}</time>
                   </header>
-                  <span className={styles.fieldLabel}>Review notes</span>
-                  <p>{approval.review_notes || "No review notes."}</p>
-                  <span className={styles.fieldLabel}>Final draft</span>
+                  <span className={styles.fieldLabel}>{t("audit.reviewNotes")}</span>
+                  <p>{approval.review_notes || t("audit.noReviewNotes")}</p>
+                  <span className={styles.fieldLabel}>{t("audit.finalDraft")}</span>
                   <pre>{approval.final_draft}</pre>
                 </article>
               ))}

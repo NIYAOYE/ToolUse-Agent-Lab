@@ -2,10 +2,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileUp, Upload } from "lucide-react";
 import { useState } from "react";
 
+import { useI18n } from "../i18n";
 import { supportOpsApi } from "../lib/supportOpsApi";
 import styles from "./OperationsViews.module.css";
 
 export function ImportTicketsPage() {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const importTickets = useMutation({
@@ -19,20 +21,17 @@ export function ImportTicketsPage() {
     <section aria-labelledby="import-title" className={styles.page}>
       <header className={styles.pageHeader}>
         <div>
-          <span className={styles.coordinate}>INTAKE / BATCH</span>
-          <h1 id="import-title">Import Tickets</h1>
-          <p>
-            Submit one CSV or JSON file. Validation is atomic: invalid rows do
-            not leave partial tickets behind.
-          </p>
+          <span className={styles.coordinate}>{t("import.coordinate")}</span>
+          <h1 id="import-title">{t("import.title")}</h1>
+          <p>{t("import.description")}</p>
         </div>
       </header>
 
       <div className={styles.importGrid}>
         <div className={styles.dropZone}>
           <FileUp aria-hidden="true" size={34} strokeWidth={1.5} />
-          <label htmlFor="ticket-import">CSV or JSON file</label>
-          <span className={styles.eyebrow}>CONTROLLED MULTIPART UPLOAD</span>
+          <label htmlFor="ticket-import">{t("import.fileLabel")}</label>
+          <span className={styles.eyebrow}>{t("import.uploadEyebrow")}</span>
           <input
             accept=".csv,.json,text/csv,application/json"
             id="ticket-import"
@@ -46,11 +45,11 @@ export function ImportTicketsPage() {
             type="button"
           >
             <Upload aria-hidden="true" size={15} />
-            {importTickets.isPending ? "Importing..." : "Import tickets"}
+            {importTickets.isPending ? t("import.pending") : t("import.button")}
           </button>
           {importTickets.data && (
             <div className={styles.result} role="status">
-              {importTickets.data.imported_count} tickets imported
+              {importTickets.data.imported_count} {t("import.resultSuffix")}
             </div>
           )}
           {importTickets.isError && (
@@ -61,13 +60,13 @@ export function ImportTicketsPage() {
         </div>
 
         <aside className={styles.panel}>
-          <span className={styles.eyebrow}>IMPORT BOUNDARY</span>
+          <span className={styles.eyebrow}>{t("import.boundary")}</span>
           <ul className={styles.boundaryList}>
-            <li>Accepted formats: UTF-8 CSV and JSON.</li>
-            <li>Required fields follow the ticket creation contract.</li>
-            <li>Duplicate IDs and invalid rows reject the full batch.</li>
-            <li>File-size limits are enforced by the backend.</li>
-            <li>No investigation starts automatically after import.</li>
+            <li>{t("import.boundaryFormats")}</li>
+            <li>{t("import.boundaryFields")}</li>
+            <li>{t("import.boundaryDuplicates")}</li>
+            <li>{t("import.boundarySize")}</li>
+            <li>{t("import.boundaryAuto")}</li>
           </ul>
         </aside>
       </div>
